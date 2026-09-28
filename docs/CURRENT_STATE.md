@@ -1,12 +1,11 @@
 # RAGBench — Current State
 
-- **Active Phase:** Phase 5 — OpenAI, Anthropic, & Google Providers (**COMPLETED**)
-- **Target Phase:** Phase 6 — Dataset & Version Management (**READY**)
+- **Active Phase:** Phase 6 — Dataset & Version Management (**COMPLETED**)
+- **Target Phase:** Phase 7 — Core Evaluation Engine (**WAITING FOR CONFIRMATION**)
 - **Completed Components:**
-  - `OpenAIProvider` (`gpt-4o`, `gpt-4o-mini`, `o3-mini`, `o1`, or any arbitrary model string)
-  - `AnthropicProvider` (`claude-3-5-sonnet`, `claude-3-7-sonnet`, or any arbitrary model string)
-  - `GoogleProvider` (`gemini-1.5-pro`, `gemini-2.0-flash`, or any arbitrary model string)
-  - Model-Independent provider architecture & dynamic token cost estimator (`estimate_token_cost`)
-  - Registered all 5 providers (`Mock`, `Groq`, `OpenAI`, `Anthropic`, `Google`) in `ProviderFactory`
-  - Verified Pytest test suite for multi-provider HTTP dispatch (`tests/test_multi_providers.py`)
-- **Verified Test Suite:** 8/8 Pytest unit & integration tests passing.
+  - `Dataset` and `DatasetItem` SQLAlchemy 2.x ORM models (`src/ragbench/models/dataset.py`)
+  - Pydantic v2 Dataset schemas for creation, bulk import, and API DTOs (`src/ragbench/schemas/dataset.py`)
+  - Dataset REST API endpoints (`POST /datasets`, `GET /datasets`, `GET /datasets/{id}`, `POST /datasets/{id}/items`)
+  - Auto-table migration on application startup in FastAPI lifespan context
+  - Integration test suite verifying dataset lifecycle (`tests/test_datasets.py`)
+- **Verified Test Suite:** 9/9 Pytest unit & integration tests passing.

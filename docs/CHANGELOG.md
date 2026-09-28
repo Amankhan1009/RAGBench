@@ -1,10 +1,8 @@
 # RAGBench — Changelog
 
-## [0.5.0-phase5] - 2026-09-28
+## [0.6.0-phase6] - 2026-09-28
 ### Added
-- Created `src/ragbench/providers/openai.py` (`OpenAIProvider`).
-- Created `src/ragbench/providers/anthropic.py` (`AnthropicProvider`).
-- Created `src/ragbench/providers/google.py` (`GoogleProvider`).
-- Created `estimate_token_cost` dynamic token pricing estimator.
-- Refactored `ProviderFactory` to support model-independent dynamic selection across 5 providers.
-- Added `tests/test_multi_providers.py`.
+- Created `src/ragbench/models/dataset.py` (`Dataset` & `DatasetItem` SQLAlchemy models).
+- Created `src/ragbench/schemas/dataset.py` (Pydantic v2 schemas).
+- Created `src/ragbench/api/v1/datasets.py` (REST API endpoints for dataset management).
+- Added `tests/test_datasets.py` integration test suite.

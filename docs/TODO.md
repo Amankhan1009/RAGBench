@@ -1,7 +1,6 @@
 # RAGBench — Active TODOs
 
-- [x] Phase 5: Implement model-independent `OpenAIProvider`, `AnthropicProvider`, `GoogleProvider`, and dynamic cost estimator.
-- [ ] Phase 6: Build `Dataset` and `DatasetItem` SQLAlchemy 2.x models (`dataset.py`).
-- [ ] Phase 6: Build Pydantic schemas for Datasets (`schemas/dataset.py`).
-- [ ] Phase 6: Build REST API endpoints for dataset creation, bulk item import, and dataset versioning (`api/v1/datasets.py`).
-- [ ] Phase 6: Add Pytest dataset test suite (`tests/test_datasets.py`).
+- [x] Phase 6: Implement `Dataset` & `DatasetItem` models, schemas, and REST endpoints.
+- [ ] Phase 7: Implement deterministic evaluation metrics (Exact Match, Recall@K, Precision@K, MRR, Hit Rate, Token Usage, Latency, Cost).
+- [ ] Phase 7: Build `BaseEvaluator` framework and evaluation metric registry.
+- [ ] Phase 7: Add evaluation metric test suite (`tests/test_evaluators.py`).
