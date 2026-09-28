@@ -3,9 +3,8 @@
 - **Active Phase:** Phase 6 — Dataset & Version Management (**COMPLETED**)
 - **Target Phase:** Phase 7 — Core Evaluation Engine (**WAITING FOR CONFIRMATION**)
 - **Completed Components:**
-  - `Dataset` and `DatasetItem` SQLAlchemy 2.x ORM models (`src/ragbench/models/dataset.py`)
-  - Pydantic v2 Dataset schemas for creation, bulk import, and API DTOs (`src/ragbench/schemas/dataset.py`)
-  - Dataset REST API endpoints (`POST /datasets`, `GET /datasets`, `GET /datasets/{id}`, `POST /datasets/{id}/items`)
-  - Auto-table migration on application startup in FastAPI lifespan context
-  - Integration test suite verifying dataset lifecycle (`tests/test_datasets.py`)
+  - 100% Model-Independent provider architecture (`BaseLLMProvider`, `GroqProvider`, `OpenAIProvider`, `AnthropicProvider`, `GoogleProvider`)
+  - Dynamic token cost calculator (`calculate_token_cost`) with zero hardcoded model maps
+  - `Dataset` & `DatasetItem` SQLAlchemy 2.x models and REST API endpoints (`/api/v1/datasets`)
+  - Full test suite passing against Neon Cloud PostgreSQL and mocked multi-provider API calls.
 - **Verified Test Suite:** 9/9 Pytest unit & integration tests passing.

@@ -3,16 +3,13 @@ import json
 import time
 from typing import Any, Dict
 import httpx
-from ragbench.providers.base import BaseLLMProvider, ProviderResponse, estimate_token_cost
+from ragbench.providers.base import BaseLLMProvider, ProviderResponse, calculate_token_cost
 
 
 class AnthropicProvider(BaseLLMProvider):
-    """Anthropic Claude implementation supporting ANY model string (claude-3-7-sonnet, etc.)."""
+    """Anthropic Claude implementation supporting ANY model identifier."""
 
     ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-
-    def __init__(self, api_key: str, model: str):
-        super().__init__(api_key=api_key, model=model)
 
     async def generate(
         self,
@@ -47,7 +44,7 @@ class AnthropicProvider(BaseLLMProvider):
         prompt_tokens = usage.get("input_tokens", 0)
         completion_tokens = usage.get("output_tokens", 0)
         total_tokens = prompt_tokens + completion_tokens
-        cost_usd = estimate_token_cost(self.model, prompt_tokens, completion_tokens)
+        cost_usd = calculate_token_cost(prompt_tokens, completion_tokens, self.input_cost_per_1k, self.output_cost_per_1k)
 
         return ProviderResponse(
             generated_text=output_text,

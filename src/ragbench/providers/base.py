@@ -1,32 +1,18 @@
-"""Abstract base class, dynamic cost estimator, and response schemas for LLM providers."""
+"""Abstract base class, pure token cost calculator, and response schemas for LLM providers."""
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 
-# Model pricing lookup (per 1K tokens: input_cost, output_cost)
-MODEL_PRICING: Dict[str, tuple[float, float]] = {
-    "gpt-4o": (0.0025, 0.01),
-    "gpt-4o-mini": (0.00015, 0.0006),
-    "o3-mini": (0.0011, 0.0044),
-    "o1": (0.015, 0.06),
-    "claude-3-5-sonnet": (0.003, 0.015),
-    "claude-3-7-sonnet": (0.003, 0.015),
-    "claude-3-5-haiku": (0.0008, 0.004),
-    "gemini-1.5-pro": (0.00125, 0.005),
-    "gemini-2.0-flash": (0.0001, 0.0004),
-    "gpt-oss-120b": (0.00005, 0.00008),
-}
 
-
-def estimate_token_cost(model_name: str, prompt_tokens: int, completion_tokens: int) -> float:
-    """Calculate estimated USD cost dynamically for any model name."""
-    for key, (in_cost, out_cost) in MODEL_PRICING.items():
-        if key in model_name.lower():
-            cost = (prompt_tokens * in_cost / 1000.0) + (completion_tokens * out_cost / 1000.0)
-            return round(cost, 6)
-    # Default fallback for unlisted / new models
-    fallback_cost = (prompt_tokens * 0.001 / 1000.0) + (completion_tokens * 0.003 / 1000.0)
-    return round(fallback_cost, 6)
+def calculate_token_cost(
+    prompt_tokens: int,
+    completion_tokens: int,
+    input_cost_per_1k: float = 0.0005,
+    output_cost_per_1k: float = 0.0015
+) -> float:
+    """Calculate USD cost purely from token volume and rate per 1K tokens without model string mapping."""
+    cost = (prompt_tokens * input_cost_per_1k / 1000.0) + (completion_tokens * output_cost_per_1k / 1000.0)
+    return round(cost, 6)
 
 
 class ProviderResponse(BaseModel):
@@ -37,17 +23,25 @@ class ProviderResponse(BaseModel):
     total_tokens: int = Field(default=0, description="Total tokens consumed")
     latency_ms: float = Field(default=0.0, description="Execution duration in milliseconds")
     cost_usd: float = Field(default=0.0, description="Calculated USD cost")
-    model_name: str = Field(description="Model identifier (e.g. any arbitrary model string)")
-    provider_name: str = Field(description="Provider name (e.g. Groq, OpenAI, Anthropic, Google)")
+    model_name: str = Field(description="Model identifier string")
+    provider_name: str = Field(description="Provider name")
     raw_response: Optional[Dict[str, Any]] = Field(default=None, description="Raw provider metadata")
 
 
 class BaseLLMProvider(ABC):
     """Unified interface that all LLM providers must implement."""
 
-    def __init__(self, api_key: str, model: str):
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        input_cost_per_1k: float = 0.0005,
+        output_cost_per_1k: float = 0.0015
+    ):
         self.api_key = api_key
         self.model = model
+        self.input_cost_per_1k = input_cost_per_1k
+        self.output_cost_per_1k = output_cost_per_1k
 
     @abstractmethod
     async def generate(

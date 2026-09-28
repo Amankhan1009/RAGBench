@@ -3,16 +3,13 @@ import json
 import time
 from typing import Any, Dict
 import httpx
-from ragbench.providers.base import BaseLLMProvider, ProviderResponse, estimate_token_cost
+from ragbench.providers.base import BaseLLMProvider, ProviderResponse, calculate_token_cost
 
 
 class OpenAIProvider(BaseLLMProvider):
-    """OpenAI API implementation supporting ANY model string (gpt-4o, o3-mini, o1, etc.)."""
+    """OpenAI API implementation supporting ANY model identifier."""
 
     OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
-
-    def __init__(self, api_key: str, model: str):
-        super().__init__(api_key=api_key, model=model)
 
     async def generate(
         self,
@@ -46,7 +43,7 @@ class OpenAIProvider(BaseLLMProvider):
         prompt_tokens = usage.get("prompt_tokens", 0)
         completion_tokens = usage.get("completion_tokens", 0)
         total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
-        cost_usd = estimate_token_cost(self.model, prompt_tokens, completion_tokens)
+        cost_usd = calculate_token_cost(prompt_tokens, completion_tokens, self.input_cost_per_1k, self.output_cost_per_1k)
 
         return ProviderResponse(
             generated_text=output_text,
@@ -95,7 +92,7 @@ class OpenAIProvider(BaseLLMProvider):
         prompt_tokens = usage.get("prompt_tokens", 0)
         completion_tokens = usage.get("completion_tokens", 0)
         total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
-        cost_usd = estimate_token_cost(self.model, prompt_tokens, completion_tokens)
+        cost_usd = calculate_token_cost(prompt_tokens, completion_tokens, self.input_cost_per_1k, self.output_cost_per_1k)
 
         return ProviderResponse(
             generated_text=output_text,
