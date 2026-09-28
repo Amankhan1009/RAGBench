@@ -2,12 +2,14 @@
 from typing import Dict, Type
 from ragbench.providers.base import BaseLLMProvider
 from ragbench.providers.mock import MockLLMProvider
+from ragbench.providers.groq import GroqProvider
 
 
 class ProviderFactory:
     """Registry and factory manager for LLM providers."""
     _registry: Dict[str, Type[BaseLLMProvider]] = {
         "mock": MockLLMProvider,
+        "groq": GroqProvider,
     }
 
     @classmethod

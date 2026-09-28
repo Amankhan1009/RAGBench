@@ -1,7 +1,7 @@
 # RAGBench — Active TODOs
 
-- [x] Phase 0: Complete system architecture specs and Python 3.13 compatibility test.
-- [x] Phase 1: Initialize FastAPI app, Pydantic settings, logging, and health endpoint.
-- [x] Phase 2: Connect Neon PostgreSQL async database engine and pass live DB tests.
-- [ ] Phase 3: Implement `BaseLLMProvider`, `ProviderResponse`, `MockLLMProvider`, and `ProviderFactory`.
-- [ ] Phase 4: Implement `GroqProvider` with AES-256 BYOK credential encryption.
+- [x] Phase 5: Implement model-independent `OpenAIProvider`, `AnthropicProvider`, `GoogleProvider`, and dynamic cost estimator.
+- [ ] Phase 6: Build `Dataset` and `DatasetItem` SQLAlchemy 2.x models (`dataset.py`).
+- [ ] Phase 6: Build Pydantic schemas for Datasets (`schemas/dataset.py`).
+- [ ] Phase 6: Build REST API endpoints for dataset creation, bulk item import, and dataset versioning (`api/v1/datasets.py`).
+- [ ] Phase 6: Add Pytest dataset test suite (`tests/test_datasets.py`).
