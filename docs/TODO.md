@@ -1,6 +1,7 @@
 # RAGBench — Active TODOs
 
-- [x] Phase 7: Implement deterministic metric evaluators and `EvaluationEngine`.
-- [ ] Phase 8: Implement LLM-as-a-Judge base interface (`LLMJudgeEvaluator`).
-- [ ] Phase 8: Implement `FaithfulnessEvaluator`, `AnswerRelevancyEvaluator`, `GroundednessEvaluator`, `HallucinationEvaluator`, and `CitationCorrectnessEvaluator`.
-- [ ] Phase 8: Add LLM-as-a-Judge unit test suite using `MockLLMProvider` (`tests/test_llm_judge_evaluators.py`).
+- [x] Phase 8: Implement LLM-as-a-Judge evaluators and live cloud API test script.
+- [ ] Phase 9: Build `Experiment` and `ExperimentItem` SQLAlchemy 2.x models (`models/experiment.py`).
+- [ ] Phase 9: Build Pydantic schemas for Experiment execution and comparison (`schemas/experiment.py`).
+- [ ] Phase 9: Build REST API endpoints for initiating experiments, fetching runs, setting baselines, and delta comparisons (`api/v1/experiments.py`).
+- [ ] Phase 9: Add Pytest experiment integration test suite (`tests/test_experiments.py`).

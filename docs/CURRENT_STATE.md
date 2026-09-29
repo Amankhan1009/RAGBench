@@ -1,17 +1,14 @@
 # RAGBench — Current State
 
-- **Active Phase:** Phase 7 — Core Evaluation Engine & Deterministic Metrics (**COMPLETED**)
-- **Target Phase:** Phase 8 — RAG Evaluation Engine & LLM-as-a-Judge (**READY**)
+- **Active Phase:** Phase 8 — RAG Evaluation Engine & LLM-as-a-Judge (**COMPLETED**)
+- **Target Phase:** Phase 9 — Experiments & Baseline Comparison (**READY**)
 - **Completed Components:**
-  - Standardized `EvaluationResult` Pydantic DTO (metric_name, score, passed, threshold, reason, metadata)
-  - `BaseEvaluator` Abstract Base Class interface
-  - `ExactMatchEvaluator` (case/whitespace normalized string parity)
-  - `RecallAtKEvaluator` (ground-truth context recall in top-K)
-  - `PrecisionAtKEvaluator` (retrieved context precision in top-K)
-  - `MRREvaluator` (Mean Reciprocal Rank of first relevant context)
-  - `HitRateEvaluator` (binary hit indicator)
-  - `ContextOverlapEvaluator` (Jaccard token overlap similarity)
-  - `LatencyTokenEvaluator` (performance budget verification)
-  - `EvaluationEngine` batch orchestrator (`src/ragbench/evaluators/engine.py`)
-  - Full unit test suite (`tests/test_deterministic_evaluators.py`)
-- **Verified Test Suite:** 14/14 Pytest unit & integration tests passing.
+  - `LLMJudgeEvaluator` base interface delegating model calls through `BaseLLMProvider`
+  - `FaithfulnessEvaluator` (evaluates context support for generated claims)
+  - `AnswerRelevancyEvaluator` (evaluates direct query relevancy)
+  - `GroundednessEvaluator` (evaluates factual context grounding)
+  - `HallucinationEvaluator` (calculates hallucination score & threshold pass rate)
+  - `CitationCorrectnessEvaluator` (evaluates in-text source citation accuracy)
+  - Live API verification script (`scripts/test_live_llm.py`) tested with Groq Cloud API
+  - Unit test suite (`tests/test_llm_judge_evaluators.py`)
+- **Verified Test Suite:** 17/17 Pytest unit & integration tests passing.
