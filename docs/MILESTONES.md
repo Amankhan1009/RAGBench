@@ -9,4 +9,5 @@
 | Phase 4 — Groq Provider + BYOK | **COMPLETED** | 2026-09-28 |
 | Phase 5 — OpenAI / Anthropic / Google | **COMPLETED** | 2026-09-28 |
 | Phase 6 — Dataset Management | **COMPLETED** | 2026-09-28 |
-| Phase 7 — Core Evaluation Engine | PENDING | - |
+| Phase 7 — Core Evaluation Engine | **COMPLETED** | 2026-09-29 |
+| Phase 8 — RAG Evaluation Engine & LLM-as-a-Judge | PENDING | - |
