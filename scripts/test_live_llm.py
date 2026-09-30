@@ -6,12 +6,18 @@ import asyncio
 import argparse
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env automatically
+load_dotenv()
+
 from ragbench.providers.factory import ProviderFactory
 from ragbench.evaluators.llm_judge.faithfulness import FaithfulnessEvaluator
 
 
 async def run_live_provider(provider_name: str, api_key: str, model: str):
-    print(f"\n[INFO] Initializing live '{provider_name}' provider with model '{model}'...")
+    masked_key = api_key[:7] + "..." + api_key[-4:] if len(api_key) > 12 else "***"
+    print(f"\n[INFO] Initializing live '{provider_name}' provider [Key: {masked_key}] with model '{model}'...")
     provider = ProviderFactory.create(provider_name, api_key=api_key, model=model)
 
     # 1. Test Text Generation
@@ -55,11 +61,11 @@ def main():
         "google": "gemini-1.5-pro",
     }
 
-    api_key = args.api_key or os.getenv(env_var_map.get(provider, "API_KEY"))
+    api_key = args.api_key or os.getenv(env_var_map.get(provider, "GROQ_API_KEY"))
     model = args.model or model_map.get(provider, "mock-model")
 
     if not api_key:
-        print(f"[ERROR] No API key provided for '{provider}'. Pass --api-key <YOUR_KEY> or set {env_var_map.get(provider)}")
+        print(f"[ERROR] No API key found for '{provider}'. Add {env_var_map.get(provider)}=<key> to your .env file.")
         sys.exit(1)
 
     asyncio.run(run_live_provider(provider, api_key, model))

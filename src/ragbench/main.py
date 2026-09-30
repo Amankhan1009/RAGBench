@@ -2,6 +2,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from ragbench.api.v1.datasets import router as datasets_router
+from ragbench.api.v1.experiments import router as experiments_router
 from ragbench.api.v1.health import router as health_router
 from ragbench.core.config import settings
 from ragbench.core.logging import logger
@@ -29,6 +30,7 @@ app = FastAPI(
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(datasets_router, prefix="/api/v1")
+app.include_router(experiments_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Root"])

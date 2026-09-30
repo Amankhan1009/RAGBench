@@ -1,7 +1,7 @@
 # RAGBench — Active TODOs
 
-- [x] Phase 8: Implement LLM-as-a-Judge evaluators and live cloud API test script.
-- [ ] Phase 9: Build `Experiment` and `ExperimentItem` SQLAlchemy 2.x models (`models/experiment.py`).
-- [ ] Phase 9: Build Pydantic schemas for Experiment execution and comparison (`schemas/experiment.py`).
-- [ ] Phase 9: Build REST API endpoints for initiating experiments, fetching runs, setting baselines, and delta comparisons (`api/v1/experiments.py`).
-- [ ] Phase 9: Add Pytest experiment integration test suite (`tests/test_experiments.py`).
+- [x] Phase 9: Implement `Experiment` models, baseline setting, and delta comparison endpoints.
+- [ ] Phase 10: Implement `RegressionDetector` engine (`evaluators/regression.py`).
+- [ ] Phase 10: Implement regression assessment API endpoint (`GET /experiments/{id}/check-regression`).
+- [ ] Phase 10: Create standalone CI regression checker script (`scripts/check_regression.py`).
+- [ ] Phase 10: Add Pytest regression test suite (`tests/test_regression.py`).

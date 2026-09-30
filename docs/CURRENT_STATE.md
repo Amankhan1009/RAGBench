@@ -1,14 +1,11 @@
 # RAGBench — Current State
 
-- **Active Phase:** Phase 8 — RAG Evaluation Engine & LLM-as-a-Judge (**COMPLETED**)
-- **Target Phase:** Phase 9 — Experiments & Baseline Comparison (**READY**)
+- **Active Phase:** Phase 9 — Experiments & Baseline Comparison (**COMPLETED**)
+- **Target Phase:** Phase 10 — Regression Testing & Automated CI Gates (**READY**)
 - **Completed Components:**
-  - `LLMJudgeEvaluator` base interface delegating model calls through `BaseLLMProvider`
-  - `FaithfulnessEvaluator` (evaluates context support for generated claims)
-  - `AnswerRelevancyEvaluator` (evaluates direct query relevancy)
-  - `GroundednessEvaluator` (evaluates factual context grounding)
-  - `HallucinationEvaluator` (calculates hallucination score & threshold pass rate)
-  - `CitationCorrectnessEvaluator` (evaluates in-text source citation accuracy)
-  - Live API verification script (`scripts/test_live_llm.py`) tested with Groq Cloud API
-  - Unit test suite (`tests/test_llm_judge_evaluators.py`)
-- **Verified Test Suite:** 17/17 Pytest unit & integration tests passing.
+  - `Experiment` & `ExperimentItem` SQLAlchemy 2.x ORM models (`src/ragbench/models/experiment.py`)
+  - Pydantic v2 schemas for experiment execution, item results, and delta comparison DTOs (`src/ragbench/schemas/experiment.py`)
+  - REST API endpoints (`POST /experiments`, `GET /experiments/{id}`, `POST /experiments/{id}/set-baseline`, `GET /experiments/{id}/compare`)
+  - Active baseline tracking per dataset and automated metric delta calculation (+/- candidate vs baseline)
+  - Integration test suite (`tests/test_experiments.py`)
+- **Verified Test Suite:** 18/18 Pytest unit & integration tests passing.
