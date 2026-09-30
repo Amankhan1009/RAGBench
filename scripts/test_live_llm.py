@@ -1,6 +1,6 @@
 """
-RAGBench Live LLM Provider & Judge Verification Script.
-Executes real API calls against cloud LLM providers using BYOK credentials.
+RAGBench Live LLM Provider, Judge, & Regression Gate Verification Script.
+Executes real API calls against cloud LLM providers using BYOK credentials from .env.
 """
 import asyncio
 import argparse
@@ -8,11 +8,11 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# Load environment variables from .env automatically
 load_dotenv()
 
 from ragbench.providers.factory import ProviderFactory
 from ragbench.evaluators.llm_judge.faithfulness import FaithfulnessEvaluator
+from ragbench.evaluators.regression import RegressionDetector
 
 
 async def run_live_provider(provider_name: str, api_key: str, model: str):
@@ -20,13 +20,13 @@ async def run_live_provider(provider_name: str, api_key: str, model: str):
     print(f"\n[INFO] Initializing live '{provider_name}' provider [Key: {masked_key}] with model '{model}'...")
     provider = ProviderFactory.create(provider_name, api_key=api_key, model=model)
 
-    # 1. Test Text Generation
-    print("[RUN] Sending text generation request...")
-    res = await provider.generate("Explain RAG evaluation in 2 sentences.", temperature=0.0)
+    # 1. Test Real Text Generation
+    print("[RUN] Sending live text generation request...")
+    res = await provider.generate("Explain software regression testing in 2 sentences.", temperature=0.0)
     print(f"[PASS] Response received in {res.latency_ms}ms | Cost: ${res.cost_usd}")
     print(f"       Generated Output: {res.generated_text.strip()}\n")
 
-    # 2. Test LLM-as-a-Judge Evaluation
+    # 2. Test Live LLM-as-a-Judge Evaluation
     print("[RUN] Executing live FaithfulnessEvaluator...")
     judge = FaithfulnessEvaluator(provider=provider, threshold=0.7)
     eval_res = await judge.evaluate_async(
@@ -37,6 +37,15 @@ async def run_live_provider(provider_name: str, api_key: str, model: str):
     print(f"[PASS] Judge Metric: {eval_res.metric_name}")
     print(f"       Score: {eval_res.score} | Passed: {eval_res.passed}")
     print(f"       Reasoning: {eval_res.reason}\n")
+
+    # 3. Test Live Regression Detection Engine
+    print("[RUN] Executing RegressionDetector engine...")
+    detector = RegressionDetector(tolerance=0.02)
+    cand_metrics = {"faithfulness": eval_res.score, "performance_budget": 1.0}
+    base_metrics = {"faithfulness": 0.95, "performance_budget": 1.0}
+    reg_report = detector.detect_regression(cand_metrics, base_metrics)
+    print(f"[PASS] Regression Check Complete | Has Regression: {reg_report.has_regression}")
+    print(f"       Deltas: {reg_report.details['faithfulness']}\n")
 
 
 def main():

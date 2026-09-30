@@ -1,11 +1,12 @@
 # RAGBench — Current State
 
-- **Active Phase:** Phase 9 — Experiments & Baseline Comparison (**COMPLETED**)
-- **Target Phase:** Phase 10 — Regression Testing & Automated CI Gates (**READY**)
+- **Active Phase:** Phase 10 — Regression Testing & Automated CI Gates (**COMPLETED**)
+- **Target Phase:** Phase 11 — LangSmith Observability & Secret Redaction (**READY**)
 - **Completed Components:**
-  - `Experiment` & `ExperimentItem` SQLAlchemy 2.x ORM models (`src/ragbench/models/experiment.py`)
-  - Pydantic v2 schemas for experiment execution, item results, and delta comparison DTOs (`src/ragbench/schemas/experiment.py`)
-  - REST API endpoints (`POST /experiments`, `GET /experiments/{id}`, `POST /experiments/{id}/set-baseline`, `GET /experiments/{id}/compare`)
-  - Active baseline tracking per dataset and automated metric delta calculation (+/- candidate vs baseline)
-  - Integration test suite (`tests/test_experiments.py`)
-- **Verified Test Suite:** 18/18 Pytest unit & integration tests passing.
+  - `RegressionDetector` engine (`src/ragbench/evaluators/regression.py`)
+  - `RegressionReport` Pydantic DTO (has_regression, regressed_metrics, tolerance, details)
+  - REST API endpoint (`GET /experiments/{id}/check-regression`)
+  - Standalone CI/CD regression gate script (`scripts/check_regression.py`)
+  - Live LLM API & Regression verification script (`scripts/test_live_llm.py`)
+  - Integration test suite (`tests/test_regression.py`)
+- **Verified Test Suite:** 20/20 Pytest unit & integration tests passing + Live Groq API verification passing.

@@ -12,4 +12,5 @@
 | Phase 7 — Core Evaluation Engine | **COMPLETED** | 2026-09-29 |
 | Phase 8 — RAG Evaluation Engine & LLM-as-a-Judge | **COMPLETED** | 2026-09-29 |
 | Phase 9 — Experiments & Baseline Comparison | **COMPLETED** | 2026-09-30 |
-| Phase 10 — Regression Testing & CI Gates | PENDING | - |
+| Phase 10 — Regression Testing & CI Gates | **COMPLETED** | 2026-09-30 |
+| Phase 11 — LangSmith Observability | PENDING | - |

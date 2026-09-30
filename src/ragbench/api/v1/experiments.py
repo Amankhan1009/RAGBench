@@ -1,12 +1,13 @@
-"""Experiment execution and baseline comparison REST API endpoints."""
+"""Experiment execution, baseline comparison, and regression detection REST API endpoints."""
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ragbench.db.session import get_db
 from ragbench.evaluators.deterministic import ExactMatchEvaluator, HitRateEvaluator, LatencyTokenEvaluator
 from ragbench.evaluators.engine import EvaluationEngine
+from ragbench.evaluators.regression import RegressionDetector, RegressionReport
 from ragbench.models.dataset import Dataset
 from ragbench.models.experiment import Experiment, ExperimentItem
 from ragbench.providers.factory import ProviderFactory
@@ -119,6 +120,16 @@ async def set_baseline(experiment_id: uuid.UUID, db: AsyncSession = Depends(get_
     return experiment
 
 
+def _get_avg_metrics(exp: Experiment) -> dict[str, float]:
+    sums: dict[str, float] = {}
+    counts: dict[str, int] = {}
+    for item in exp.items:
+        for k, v in item.metrics.items():
+            sums[k] = sums.get(k, 0.0) + v.get("score", 0.0)
+            counts[k] = counts.get(k, 0) + 1
+    return {k: round(sums[k] / counts[k], 4) for k in sums if counts[k] > 0}
+
+
 @router.get("/{experiment_id}/compare", response_model=ComparisonDelta)
 async def compare_experiment(experiment_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """Compare candidate experiment against the active baseline."""
@@ -132,17 +143,8 @@ async def compare_experiment(experiment_id: uuid.UUID, db: AsyncSession = Depend
     if not baseline:
         raise HTTPException(status_code=400, detail="No active baseline set for this dataset.")
 
-    def avg_metrics(exp: Experiment) -> Dict[str, float]:
-        sums: Dict[str, float] = {}
-        counts: Dict[str, int] = {}
-        for item in exp.items:
-            for k, v in item.metrics.items():
-                sums[k] = sums.get(k, 0.0) + v.get("score", 0.0)
-                counts[k] = counts.get(k, 0) + 1
-        return {k: round(sums[k] / counts[k], 4) for k in sums if counts[k] > 0}
-
-    cand_avg = avg_metrics(candidate)
-    base_avg = avg_metrics(baseline)
+    cand_avg = _get_avg_metrics(candidate)
+    base_avg = _get_avg_metrics(baseline)
 
     deltas = {}
     all_keys = set(cand_avg.keys()).union(base_avg.keys())
@@ -162,3 +164,27 @@ async def compare_experiment(experiment_id: uuid.UUID, db: AsyncSession = Depend
         baseline_name=baseline.name,
         metric_deltas=deltas
     )
+
+
+@router.get("/{experiment_id}/check-regression", response_model=RegressionReport)
+async def check_regression(
+    experiment_id: uuid.UUID,
+    tolerance: float = Query(default=0.02, ge=0.0, le=1.0, description="Max allowed score drop"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Evaluate candidate experiment against active baseline for quality regressions."""
+    stmt = select(Experiment).where(Experiment.id == experiment_id)
+    candidate = (await db.execute(stmt)).scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
+
+    base_stmt = select(Experiment).where(Experiment.dataset_id == candidate.dataset_id, Experiment.is_baseline == True)
+    baseline = (await db.execute(base_stmt)).scalar_one_or_none()
+    if not baseline:
+        raise HTTPException(status_code=400, detail="No active baseline set for this dataset.")
+
+    cand_avg = _get_avg_metrics(candidate)
+    base_avg = _get_avg_metrics(baseline)
+
+    detector = RegressionDetector(tolerance=tolerance)
+    return detector.detect_regression(candidate_metrics=cand_avg, baseline_metrics=base_avg)
