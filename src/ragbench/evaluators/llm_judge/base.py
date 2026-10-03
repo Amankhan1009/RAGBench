@@ -1,5 +1,6 @@
 """Base class for LLM-as-a-Judge evaluators routing via BaseLLMProvider."""
 from typing import Any, Dict, Optional
+
 from ragbench.evaluators.base import BaseEvaluator, EvaluationResult
 from ragbench.providers.base import BaseLLMProvider
 

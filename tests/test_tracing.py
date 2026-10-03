@@ -1,5 +1,6 @@
 """Tests for LangSmith tracing, secret redaction, and zero-leakage payload sanitization."""
 import pytest
+
 from ragbench.core.tracing import (
     TraceManager,
     redact_text,
@@ -102,6 +103,7 @@ async def test_trace_async_run_error_handling():
 
 def test_logging_scrubs_secrets(caplog):
     import logging
+
     from ragbench.core.logging import logger
 
     with caplog.at_level(logging.INFO):

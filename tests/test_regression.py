@@ -1,11 +1,12 @@
 """Unit and Integration tests for Regression Detector & CI Endpoint."""
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+import ragbench.models
 from ragbench.db.base import Base
 from ragbench.db.session import get_engine
 from ragbench.evaluators.regression import RegressionDetector
 from ragbench.main import app
-import ragbench.models
 
 
 def test_regression_detector_pass_and_fail():

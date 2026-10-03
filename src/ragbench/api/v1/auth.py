@@ -1,6 +1,7 @@
 """Authentication and BYOK API Key management endpoints."""
 import secrets
 from typing import List
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

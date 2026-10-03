@@ -1,12 +1,14 @@
 """Event-loop aware Async SQLAlchemy engine and session factory for Neon PostgreSQL."""
 import asyncio
 from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+
 from ragbench.core.config import settings
 from ragbench.core.logging import logger
 

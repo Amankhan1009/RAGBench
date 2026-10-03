@@ -3,6 +3,8 @@ RAGBench Phase 0 Compatibility & Integration Spike Verification Script
 Checks Python version, basic cryptography operations, Pydantic v2 schemas, and DeepEval importability.
 """
 import sys
+
+
 def verify_environment():
     print(f"[INFO] Checking Python version: {sys.version}")
     assert sys.version_info >= (3, 13), "RAGBench requires Python 3.13+"

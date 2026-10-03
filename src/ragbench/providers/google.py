@@ -2,7 +2,9 @@
 import json
 import time
 from typing import Any, Dict
+
 import httpx
+
 from ragbench.providers.base import BaseLLMProvider, ProviderResponse, calculate_token_cost
 
 

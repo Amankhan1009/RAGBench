@@ -2,17 +2,18 @@
 RAGBench Live LLM Provider, Judge, & Regression Gate Verification Script.
 Executes real API calls against cloud LLM providers using BYOK credentials from .env.
 """
-import asyncio
 import argparse
+import asyncio
 import os
 import sys
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from ragbench.providers.factory import ProviderFactory
 from ragbench.evaluators.llm_judge.faithfulness import FaithfulnessEvaluator
 from ragbench.evaluators.regression import RegressionDetector
+from ragbench.providers.factory import ProviderFactory
 
 
 async def run_live_provider(provider_name: str, api_key: str, model: str):

@@ -1,5 +1,6 @@
 """Unit tests for BYOK API Key Encryption & Decryption."""
 import pytest
+
 from ragbench.core.security import decrypt_api_key, encrypt_api_key
 
 

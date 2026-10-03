@@ -1,7 +1,10 @@
 """FastAPI application entrypoint using modern lifespan handlers."""
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+import ragbench.models
 from ragbench.api.v1.agent import router as agent_router
 from ragbench.api.v1.auth import router as auth_router
 from ragbench.api.v1.datasets import router as datasets_router
@@ -11,7 +14,6 @@ from ragbench.core.config import settings
 from ragbench.core.logging import logger
 from ragbench.db.base import Base
 from ragbench.db.session import get_engine
-import ragbench.models
 
 
 @asynccontextmanager

@@ -3,6 +3,7 @@ RAGBench Standalone CI/CD Regression Gate Script.
 Queries the RAGBench candidate vs baseline comparison and exits with 0 (PASS) or 1 (FAIL).
 """
 import sys
+
 from ragbench.evaluators.regression import RegressionDetector
 
 

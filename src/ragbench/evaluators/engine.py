@@ -1,5 +1,6 @@
 """Evaluation Engine for executing batch deterministic metric evaluation suites."""
 from typing import Any, Dict, List, Optional
+
 from ragbench.evaluators.base import BaseEvaluator, EvaluationResult
 
 

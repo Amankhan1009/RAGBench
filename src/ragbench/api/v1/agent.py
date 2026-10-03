@@ -1,5 +1,6 @@
 """Agent Trajectory Evaluation REST API endpoints."""
 from typing import List, Optional
+
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
 

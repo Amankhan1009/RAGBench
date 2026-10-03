@@ -5,6 +5,7 @@ Sends a live sanitized trace span to your LangSmith project and verifies the res
 import asyncio
 import os
 import sys
+
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -1,5 +1,6 @@
 """Exact Match evaluator."""
 from typing import Any, Optional
+
 from ragbench.evaluators.base import BaseEvaluator, EvaluationResult
 
 

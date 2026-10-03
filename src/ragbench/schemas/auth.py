@@ -1,6 +1,7 @@
 """Pydantic schemas for multi-tenant workspace authentication and BYOK key registration."""
 from datetime import datetime
 from typing import Optional
+
 from pydantic import BaseModel, Field
 
 

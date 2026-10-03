@@ -1,7 +1,7 @@
 """Unit tests for Multi-Tenant Workspace & BYOK Key schemas and models."""
+from ragbench.core.security import decrypt_api_key, encrypt_api_key
 from ragbench.models.workspace import Workspace, WorkspaceApiKey
 from ragbench.schemas.auth import ApiKeyMetadata, ApiKeyRegister, WorkspaceCreate, WorkspaceResponse
-from ragbench.core.security import decrypt_api_key, encrypt_api_key
 
 
 def test_workspace_schemas():

@@ -1,6 +1,7 @@
 """Database session unit tests."""
 import pytest
 from sqlalchemy import text
+
 from ragbench.db.session import get_session_factory
 
 

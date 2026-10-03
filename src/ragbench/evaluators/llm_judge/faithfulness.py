@@ -1,6 +1,7 @@
 """Faithfulness LLM-as-a-judge evaluator."""
 import json
 from typing import Any, Optional
+
 from ragbench.evaluators.base import EvaluationResult
 from ragbench.evaluators.llm_judge.base import LLMJudgeEvaluator
 

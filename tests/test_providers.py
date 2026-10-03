@@ -1,5 +1,6 @@
 """Unit tests for Provider Abstraction Layer & Mock Provider."""
 import pytest
+
 from ragbench.providers.factory import ProviderFactory
 from ragbench.providers.mock import MockLLMProvider
 

@@ -1,6 +1,7 @@
 """Health check endpoint unit test."""
 import pytest
 from httpx import ASGITransport, AsyncClient
+
 from ragbench.main import app
 
 

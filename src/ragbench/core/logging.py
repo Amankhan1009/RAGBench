@@ -1,6 +1,7 @@
 """Structured logging configuration with automated zero-leakage secret masking."""
 import logging
 import sys
+
 from ragbench.core.config import settings
 
 

@@ -1,5 +1,6 @@
 """Application settings and database URL normalization for Neon PostgreSQL."""
 import re
+
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

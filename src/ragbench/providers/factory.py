@@ -1,8 +1,9 @@
 """Factory for instantiating LLM provider implementations."""
 from typing import Dict, Type
+
 from ragbench.providers.base import BaseLLMProvider
-from ragbench.providers.mock import MockLLMProvider
 from ragbench.providers.groq import GroqProvider
+from ragbench.providers.mock import MockLLMProvider
 
 
 class ProviderFactory:

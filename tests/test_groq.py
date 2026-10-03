@@ -1,5 +1,6 @@
 """Unit tests for Groq Provider implementation using mocked HTTP calls."""
 import pytest
+
 from ragbench.providers.factory import ProviderFactory
 from ragbench.providers.groq import GroqProvider
 

@@ -1,7 +1,9 @@
 """SQLAlchemy models for multi-tenant workspaces and encrypted BYOK credentials."""
 import uuid
+
 from sqlalchemy import Column, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import relationship
+
 from ragbench.db.base import Base
 
 

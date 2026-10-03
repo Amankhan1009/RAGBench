@@ -1,5 +1,6 @@
 """Latency and Token performance metric evaluators."""
 from typing import Any, Optional
+
 from ragbench.evaluators.base import BaseEvaluator, EvaluationResult
 
 

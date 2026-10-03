@@ -1,5 +1,6 @@
 """BYOK API Key encryption and decryption using AES-256 / Fernet."""
 from cryptography.fernet import Fernet
+
 from ragbench.core.config import settings
 
 

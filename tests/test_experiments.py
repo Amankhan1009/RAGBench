@@ -1,10 +1,11 @@
 """Integration test suite for Experiment execution and Baseline comparisons."""
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+import ragbench.models
 from ragbench.db.base import Base
 from ragbench.db.session import get_engine
 from ragbench.main import app
-import ragbench.models
 
 
 @pytest.mark.asyncio
