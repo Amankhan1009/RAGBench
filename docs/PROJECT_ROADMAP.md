@@ -14,5 +14,5 @@
 - [x] **Phase 11 — LangSmith Observability & Secret Redaction**
 - [x] **Phase 12 — Next.js Frontend Dashboard**
 - [x] **Phase 13 — User Authentication & Multi-Tenant Isolation**
-- [ ] **Phase 14 — Agent Trajectory & Tool Evaluation**
+- [x] **Phase 14 — Agent Trajectory & Tool Evaluation**
 - [ ] **Phase 15 — Docker, CI/CD Pipeline, & Productionization**

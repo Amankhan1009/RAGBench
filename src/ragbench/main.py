@@ -2,6 +2,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from ragbench.api.v1.agent import router as agent_router
 from ragbench.api.v1.auth import router as auth_router
 from ragbench.api.v1.datasets import router as datasets_router
 from ragbench.api.v1.experiments import router as experiments_router
@@ -43,6 +44,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(datasets_router, prefix="/api/v1")
 app.include_router(experiments_router, prefix="/api/v1")
+app.include_router(agent_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Root"])

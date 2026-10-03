@@ -1,9 +1,8 @@
 # RAGBench — Changelog
 
-## [0.13.0-phase13] - 2026-10-03
+## [0.14.0-phase14] - 2026-10-03
 ### Added
-- Created `src/ragbench/models/workspace.py` with `Workspace` and `WorkspaceApiKey` models.
-- Created `src/ragbench/schemas/auth.py` for workspace creation, BYOK key registration, and metadata preview.
-- Created `src/ragbench/api/v1/auth.py` with `/auth/workspaces`, `/auth/keys`, and `get_current_workspace` dependency.
-- Registered auth router in `src/ragbench/main.py`.
-- Added `tests/test_auth.py` test suite.
+- Created `src/ragbench/evaluators/agent/trajectory.py` with `TrajectoryEvaluator`, `ToolCall`, `AgentStep`, and `AgentTrajectory`.
+- Implemented loop detection, redundant tool call tracking, precision, recall, and efficiency metrics.
+- Created `src/ragbench/api/v1/agent.py` (`POST /api/v1/agent/evaluate-trajectory`).
+- Added `tests/test_agent_evaluator.py` covering loops, missing tools, and REST API calls.
