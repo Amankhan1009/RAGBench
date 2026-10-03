@@ -1,6 +1,7 @@
 """FastAPI application entrypoint using modern lifespan handlers."""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from ragbench.api.v1.datasets import router as datasets_router
 from ragbench.api.v1.experiments import router as experiments_router
 from ragbench.api.v1.health import router as health_router
@@ -26,6 +27,15 @@ app = FastAPI(
     description="Production-Grade LLM & RAG Evaluation Platform",
     version="0.1.0",
     lifespan=lifespan
+)
+
+# Enable CORS for Next.js frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(health_router, prefix="/api/v1")
