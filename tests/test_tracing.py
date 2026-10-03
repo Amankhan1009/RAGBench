@@ -13,7 +13,7 @@ def test_redact_secrets_in_strings():
     groq_secret = "Using key gsk_1234567890abcdef1234567890 for API calls"
     openai_secret = "Authorization: sk-abcdef1234567890abcdef1234567890"
     anthropic_secret = "Token sk-ant-abcdef1234567890abcdef1234567890"
-    google_secret = "Key AIzaSyD12345678901234567890123456789012"
+    google_secret = f"Key AIza{'X' * 35}"
     bearer_secret = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.secret"
 
     assert "gsk_" not in redact_text(groq_secret)
