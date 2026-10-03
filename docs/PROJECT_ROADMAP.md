@@ -13,6 +13,6 @@
 - [x] **Phase 10 — Regression Detection & CI Gates**
 - [x] **Phase 11 — LangSmith Observability & Secret Redaction**
 - [x] **Phase 12 — Next.js Frontend Dashboard**
-- [ ] **Phase 13 — User Authentication & Multi-Tenant Isolation**
+- [x] **Phase 13 — User Authentication & Multi-Tenant Isolation**
 - [ ] **Phase 14 — Agent Trajectory & Tool Evaluation**
 - [ ] **Phase 15 — Docker, CI/CD Pipeline, & Productionization**

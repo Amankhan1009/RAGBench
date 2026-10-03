@@ -1,10 +1,11 @@
 # RAGBench — Current State
 
-- **Active Phase:** Phase 12 — Next.js Frontend Dashboard (**COMPLETED**)
-- **Target Phase:** Phase 13 — User Authentication & Multi-Tenant Isolation (**READY**)
+- **Active Phase:** Phase 13 — User Authentication & Multi-Tenant Isolation (**COMPLETED**)
+- **Target Phase:** Phase 14 — Agent Trajectory & Tool Evaluation (**READY**)
 - **Completed Components:**
-  - Next.js (App Router) + TypeScript + Tailwind CSS Frontend (`frontend/`)
-  - API Client Layer (`frontend/src/lib/api.ts`)
-  - Full Interactive Dashboard UI (`frontend/src/app/page.tsx`)
-  - FastAPI CORS Middleware (`src/ragbench/main.py`)
-- **Verified Test Suite:** 20/20 backend tests passing + Next.js build verified.
+  - Multi-tenant `Workspace` and `WorkspaceApiKey` ORM models (`src/ragbench/models/workspace.py`)
+  - Authentication schemas with zero-leakage preview isolation (`src/ragbench/schemas/auth.py`)
+  - Multi-tenant auth router: workspace provisioning & BYOK key encryption (`src/ragbench/api/v1/auth.py`)
+  - Integrated `X-API-Key` tenant dependency resolution
+  - Unit test suite (`tests/test_auth.py`)
+- **Verified Test Suite:** 22/22 offline unit tests passing.
