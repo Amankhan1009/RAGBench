@@ -1,11 +1,17 @@
 """Experiment execution, baseline comparison, and regression detection REST API endpoints."""
 import uuid
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from ragbench.db.session import get_db
-from ragbench.evaluators.deterministic import ExactMatchEvaluator, HitRateEvaluator, LatencyTokenEvaluator
+from ragbench.evaluators.deterministic import (
+    ExactMatchEvaluator,
+    HitRateEvaluator,
+    LatencyTokenEvaluator,
+)
 from ragbench.evaluators.engine import EvaluationEngine
 from ragbench.evaluators.regression import RegressionDetector, RegressionReport
 from ragbench.models.dataset import Dataset
@@ -109,7 +115,10 @@ async def set_baseline(experiment_id: uuid.UUID, db: AsyncSession = Depends(get_
     if not experiment:
         raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
 
-    clear_stmt = select(Experiment).where(Experiment.dataset_id == experiment.dataset_id, Experiment.is_baseline == True)
+    clear_stmt = select(Experiment).where(
+        Experiment.dataset_id == experiment.dataset_id,
+        Experiment.is_baseline.is_(True),
+    )
     existing_baselines = (await db.execute(clear_stmt)).scalars().all()
     for b in existing_baselines:
         b.is_baseline = False
@@ -138,7 +147,7 @@ async def compare_experiment(experiment_id: uuid.UUID, db: AsyncSession = Depend
     if not candidate:
         raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
 
-    base_stmt = select(Experiment).where(Experiment.dataset_id == candidate.dataset_id, Experiment.is_baseline == True)
+    base_stmt = select(Experiment).where(Experiment.dataset_id == candidate.dataset_id, Experiment.is_baseline.is_(True))
     baseline = (await db.execute(base_stmt)).scalar_one_or_none()
     if not baseline:
         raise HTTPException(status_code=400, detail="No active baseline set for this dataset.")
@@ -178,7 +187,10 @@ async def check_regression(
     if not candidate:
         raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
 
-    base_stmt = select(Experiment).where(Experiment.dataset_id == candidate.dataset_id, Experiment.is_baseline == True)
+    base_stmt = select(Experiment).where(
+        Experiment.dataset_id == candidate.dataset_id,
+        Experiment.is_baseline.is_(True),
+    )
     baseline = (await db.execute(base_stmt)).scalar_one_or_none()
     if not baseline:
         raise HTTPException(status_code=400, detail="No active baseline set for this dataset.")
