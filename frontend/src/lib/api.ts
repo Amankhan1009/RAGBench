@@ -1,5 +1,98 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  workspace_id: string;
+  workspace_name: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("ragbench_jwt_token");
+}
+
+export function setToken(token: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("ragbench_jwt_token", token);
+  }
+}
+
+export function removeToken() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("ragbench_jwt_token");
+  }
+}
+
+export function getAuthHeaders(): HeadersInit {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const token = getToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+export async function registerUser(
+  email: string,
+  password: string,
+  name?: string
+): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, name }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Registration failed");
+  }
+  const data: AuthResponse = await res.json();
+  setToken(data.access_token);
+  return data;
+}
+
+export async function loginUser(
+  email: string,
+  password: string
+): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Invalid email or password");
+  }
+  const data: AuthResponse = await res.json();
+  setToken(data.access_token);
+  return data;
+}
+
+export async function fetchCurrentUser(): Promise<User | null> {
+  const token = getToken();
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    removeToken();
+    return null;
+  }
+  return res.json();
+}
+
 export interface HealthStatus {
   status: string;
   app_name: string;
@@ -57,7 +150,10 @@ export async function fetchHealth(): Promise<HealthStatus> {
 }
 
 export async function fetchDatasets(): Promise<Dataset[]> {
-  const res = await fetch(`${API_BASE}/datasets`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/datasets`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch datasets");
   return res.json();
 }
@@ -69,7 +165,7 @@ export async function createDataset(payload: {
 }): Promise<Dataset> {
   const res = await fetch(`${API_BASE}/datasets`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to create dataset");
@@ -77,7 +173,10 @@ export async function createDataset(payload: {
 }
 
 export async function fetchExperiments(): Promise<Experiment[]> {
-  const res = await fetch(`${API_BASE}/experiments`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/experiments`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch experiments");
   return res.json();
 }
@@ -87,10 +186,11 @@ export async function runExperiment(payload: {
   dataset_id: string;
   provider_name: string;
   model_name?: string;
+  api_key?: string;
 }): Promise<Experiment> {
   const res = await fetch(`${API_BASE}/experiments`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to run experiment");
@@ -100,6 +200,7 @@ export async function runExperiment(payload: {
 export async function setBaseline(experimentId: string): Promise<Experiment> {
   const res = await fetch(`${API_BASE}/experiments/${experimentId}/set-baseline`, {
     method: "POST",
+    headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error("Failed to set baseline");
   return res.json();
@@ -111,11 +212,46 @@ export async function checkRegression(
 ): Promise<RegressionReport> {
   const res = await fetch(
     `${API_BASE}/experiments/${experimentId}/check-regression?tolerance=${tolerance}`,
-    { cache: "no-store" }
+    {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    }
   );
   if (!res.ok) {
-    const error = await res.json();
+    const error = await res.json().catch(() => ({}));
     throw new Error(error.detail || "Failed to check regression");
+  }
+  return res.json();
+}
+
+export interface ApiKeyMetadata {
+  id: string;
+  provider: string;
+  key_preview: string;
+  created_at: string;
+}
+
+export async function fetchApiKeys(): Promise<ApiKeyMetadata[]> {
+  const res = await fetch(`${API_BASE}/auth/keys`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch API keys");
+  return res.json();
+}
+
+export async function registerApiKey(
+  provider: string,
+  apiKey: string
+): Promise<ApiKeyMetadata> {
+  const res = await fetch(`${API_BASE}/auth/keys`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ provider, api_key: apiKey }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to register API key");
   }
   return res.json();
 }

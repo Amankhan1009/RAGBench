@@ -96,6 +96,12 @@ async def create_experiment(payload: ExperimentCreate, db: AsyncSession = Depend
     await db.refresh(experiment)
     return experiment
 
+@router.get("", response_model=List[ExperimentResponse])
+async def list_experiments(db: AsyncSession = Depends(get_db)):
+    """List all evaluation experiments ordered by creation time."""
+    stmt = select(Experiment).order_by(Experiment.created_at.desc())
+    res = await db.execute(stmt)
+    return res.scalars().all()
 
 @router.get("/{experiment_id}", response_model=ExperimentResponse)
 async def get_experiment(experiment_id: uuid.UUID, db: AsyncSession = Depends(get_db)):

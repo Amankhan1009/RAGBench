@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class ExperimentCreate(BaseModel):
@@ -45,6 +45,22 @@ class ExperimentResponse(BaseModel):
     items: List[ExperimentItemResponse] = []
 
     model_config = {"from_attributes": True}
+
+    @computed_field
+    @property
+    def summary_metrics(self) -> Dict[str, float]:
+        """Aggregate average metric scores across all experiment items."""
+        if not self.items:
+            return {}
+        totals: Dict[str, float] = {}
+        counts: Dict[str, int] = {}
+        for item in self.items:
+            for k, val in item.metrics.items():
+                score = val.get("score") if isinstance(val, dict) else val
+                if isinstance(score, (int, float)):
+                    totals[k] = totals.get(k, 0.0) + score
+                    counts[k] = counts.get(k, 0) + 1
+        return {k: round(totals[k] / counts[k], 4) for k in totals if counts[k] > 0}
 
 
 class ComparisonDelta(BaseModel):
