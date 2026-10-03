@@ -4,6 +4,7 @@ Executes an end-to-end workflow through all platform subsystems.
 """
 import asyncio
 import uuid
+
 from httpx import ASGITransport, AsyncClient
 
 from ragbench.core.tracing import trace_async_run, trace_manager
