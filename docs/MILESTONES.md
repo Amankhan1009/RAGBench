@@ -13,4 +13,5 @@
 | Phase 8 — RAG Evaluation Engine & LLM-as-a-Judge | **COMPLETED** | 2026-09-29 |
 | Phase 9 — Experiments & Baseline Comparison | **COMPLETED** | 2026-09-30 |
 | Phase 10 — Regression Testing & CI Gates | **COMPLETED** | 2026-09-30 |
-| Phase 11 — LangSmith Observability | PENDING | - |
+| Phase 11 — LangSmith Observability & Secret Redaction | **COMPLETED** | 2026-10-03 |
+| Phase 12 — Next.js Frontend Dashboard | PENDING | - |
