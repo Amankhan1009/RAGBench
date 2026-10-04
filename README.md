@@ -52,6 +52,20 @@ All architecture specifications, system designs, and operational runbooks are ma
 | [`docs/MILESTONES.md`](docs/MILESTONES.md) | Milestone execution log & progress tracking |
 | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Historical record of code & documentation changes |
 | [`docs/TODO.md`](docs/TODO.md) | Action items & pending tasks tracking |
+| [`docs/V2_ROADMAP.md`](docs/V2_ROADMAP.md) | **Version 2.0 Feature Specifications & Architecture** |
+
+---
+
+## Version 2.0 Roadmap (Post-Deployment)
+
+Following production deployment of **v1.0** to Render, RAGBench will expand with 5 major platform capabilities:
+1. **Interactive Visual Analytics & Pareto Frontier:** Cost/speed vs quality scatter plots and 6-axis metric radar charts.
+2. **Real-Time SSE Live Streaming:** Item-by-item progress streaming with live latency and token speeds.
+3. **Synthetic AI Test Dataset Generator:** Auto-synthesize multi-hop queries, contexts, and answers from raw documentation.
+4. **Dataset Ingestion & Executive Reports:** Drag-and-drop CSV/JSONL import and exportable Markdown/PDF executive benchmark summaries.
+5. **Agent Trajectory Visual Timeline:** Step-by-step tool graph inspector with automated loop and hallucination detection.
+
+*Full technical details in [`docs/V2_ROADMAP.md`](docs/V2_ROADMAP.md).*
 
 ---
 

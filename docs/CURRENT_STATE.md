@@ -1,11 +1,21 @@
 # RAGBench — Current State
 
-- **Active Phase:** Phase 15 — Docker, CI/CD Pipeline & Productionization (**COMPLETED**)
-- **Target Phase:** Master Development Roadmap 100% Completed!
-- **Completed Components:**
-  - Multi-stage Docker packaging (`Dockerfile` & `frontend/Dockerfile`)
-  - Container composition (`docker-compose.yml`)
-  - GitHub Actions automated CI/CD pipeline (`.github/workflows/ci.yml`)
-  - Automated PR linting (Ruff), testing (Pytest), and regression checking (`scripts/check_regression.py`)
-  - Complete Next.js frontend compilation and build validation
-- **Verified Test Suite:** 26/26 backend tests passing + clean frontend production build.
+- **Current Status:** Version 1.0 Production Deployment Ready
+- **Target Status:** Deploy v1.0 to Render -> Implement Version 2.0 Roadmap
+- **Completed Components (v1.0):**
+  - Full hybrid evaluation engine (Deterministic + LLM-as-a-Judge)
+  - 100% Model-independent LLM provider abstraction layer (Groq, OpenAI, Anthropic, Google Gemini)
+  - Bring Your Own Key (BYOK) vault with AES-256 Fernet encryption and inline key resolution
+  - Regression detection engine with automated tolerance threshold gating
+  - LangSmith tracing integration with automated secret scrubbing and HTTP 202 acceptance
+  - Full Next.js 16 frontend dashboard with responsive dark UI
+  - Multi-stage Docker packaging (`Dockerfile` with dynamic port binding)
+  - Render blueprint deployment configuration (`render.yaml` on Free Tier)
+  - Automated GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`)
+- **Verified Test Suite:** 31/31 unit & regression tests passing + clean TypeScript & Ruff checks.
+- **Next Milestone:** Version 2.0 Roadmap ([`docs/V2_ROADMAP.md`](V2_ROADMAP.md))
+  - Phase 16: Interactive Visual Analytics & Pareto Frontier
+  - Phase 17: Live Evaluation Streaming (SSE)
+  - Phase 18: Synthetic AI Test Dataset Generator
+  - Phase 19: Dataset Ingestion (CSV/JSONL) & Executive Report Export
+  - Phase 20: Agent Trajectory Visual Timeline UI

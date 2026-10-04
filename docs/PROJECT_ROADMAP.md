@@ -15,4 +15,16 @@
 - [x] **Phase 12 — Next.js Frontend Dashboard**
 - [x] **Phase 13 — User Authentication & Multi-Tenant Isolation**
 - [x] **Phase 14 — Agent Trajectory & Tool Evaluation**
-- [x] **Phase 15 — Docker, CI/CD Pipeline, & Productionization**
+- [x] **Phase 15 — Docker, CI/CD Pipeline, & Productionization (v1.0 Live on Render)**
+
+---
+
+## Version 2.0 Roadmap (Post-v1 Production Deployment)
+
+*Detailed specifications available in [`docs/V2_ROADMAP.md`](V2_ROADMAP.md)*
+
+- [ ] **Phase 16 — Interactive Visual Analytics & Pareto Frontier (Quality vs. Speed/Cost)**
+- [ ] **Phase 17 — Real-Time Streaming & Live Evaluation Progress (SSE)**
+- [ ] **Phase 18 — Synthetic AI Test Dataset Generator (LLM-Assisted)**
+- [ ] **Phase 19 — One-Click Ingestion (CSV / JSONL) & Executive Report Export**
+- [ ] **Phase 20 — Dedicated Agent Trajectory & Loop Inspector UI**
