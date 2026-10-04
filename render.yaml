@@ -4,7 +4,7 @@ services:
     name: ragbench-backend
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: free
     region: oregon
     healthCheckPath: /api/v1/health
     envVars:
@@ -23,7 +23,7 @@ services:
   - type: web
     name: ragbench-frontend
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     rootDir: frontend
     buildCommand: npm install && npm run build
