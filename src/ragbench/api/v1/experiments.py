@@ -1,4 +1,4 @@
-"""Experiment execution, baseline comparison, and regression detection REST API endpoints."""
+import os
 import uuid
 from typing import List
 
@@ -6,6 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ragbench.api.v1.auth import get_current_workspace
+from ragbench.core.security import decrypt_api_key
+from ragbench.core.tracing import trace_async_run
 from ragbench.db.session import get_db
 from ragbench.evaluators.deterministic import (
     ExactMatchEvaluator,
@@ -16,6 +19,7 @@ from ragbench.evaluators.engine import EvaluationEngine
 from ragbench.evaluators.regression import RegressionDetector, RegressionReport
 from ragbench.models.dataset import Dataset
 from ragbench.models.experiment import Experiment, ExperimentItem
+from ragbench.models.workspace import Workspace, WorkspaceApiKey
 from ragbench.providers.factory import ProviderFactory
 from ragbench.schemas.experiment import (
     ComparisonDelta,
@@ -27,15 +31,47 @@ router = APIRouter(prefix="/experiments", tags=["Experiments"])
 
 
 @router.post("", response_model=ExperimentResponse, status_code=status.HTTP_201_CREATED)
-async def create_experiment(payload: ExperimentCreate, db: AsyncSession = Depends(get_db)):
+async def create_experiment(
+    payload: ExperimentCreate,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db),
+):
     """Launch an evaluation experiment across dataset items."""
     stmt = select(Dataset).where(Dataset.id == payload.dataset_id)
     dataset = (await db.execute(stmt)).scalar_one_or_none()
     if not dataset:
         raise HTTPException(status_code=404, detail=f"Dataset '{payload.dataset_id}' not found.")
 
+    effective_key = payload.api_key
+    if not effective_key:
+        if payload.provider_name.lower() == "mock":
+            effective_key = "mock-key"
+        else:
+            key_stmt = select(WorkspaceApiKey).where(
+                WorkspaceApiKey.workspace_id == workspace.id,
+                WorkspaceApiKey.provider == payload.provider_name.lower(),
+            )
+            key_record = (await db.execute(key_stmt)).scalar_one_or_none()
+            if key_record:
+                try:
+                    effective_key = decrypt_api_key(key_record.encrypted_key)
+                except Exception:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Failed to decrypt stored provider API key. Please re-register your key in the BYOK tab.",
+                    )
+            else:
+                env_fallback = os.getenv(f"{payload.provider_name.upper()}_API_KEY")
+                if env_fallback:
+                    effective_key = env_fallback
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"No API key configured for provider '{payload.provider_name}'. Please add your API key in the 'API Keys (BYOK)' tab or pass it directly.",
+                    )
+
     try:
-        provider = ProviderFactory.create(payload.provider_name, api_key=payload.api_key or "mock-key", model=payload.model_name)
+        provider = ProviderFactory.create(payload.provider_name, api_key=effective_key, model=payload.model_name)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Failed to instantiate provider: {str(exc)}")
 
@@ -54,30 +90,48 @@ async def create_experiment(payload: ExperimentCreate, db: AsyncSession = Depend
 
     for ds_item in dataset.items:
         try:
-            gen_res = await provider.generate(ds_item.query)
-            eval_dict = engine.evaluate_sample(
-                query=ds_item.query,
-                response=gen_res.generated_text,
-                expected_output=ds_item.expected_output,
-                retrieved_contexts=ds_item.contexts,
-                ground_truth_contexts=ds_item.contexts,
-                latency_ms=gen_res.latency_ms,
-                total_tokens=gen_res.total_tokens
-            )
-            metrics_payload = {k: {"score": v.score, "passed": v.passed, "reason": v.reason} for k, v in eval_dict.items()}
+            async with trace_async_run(
+                name=f"{payload.provider_name.capitalize()} - {payload.model_name or 'default'}",
+                run_type="llm",
+                inputs={"query": ds_item.query, "dataset_id": str(dataset.id)},
+                metadata={
+                    "experiment_name": payload.name,
+                    "provider": payload.provider_name,
+                    "model": payload.model_name or "default",
+                    "dataset_item_id": str(ds_item.id),
+                    "workspace": workspace.name,
+                },
+            ) as trace_outputs:
+                gen_res = await provider.generate(ds_item.query)
+                eval_dict = engine.evaluate_sample(
+                    query=ds_item.query,
+                    response=gen_res.generated_text,
+                    expected_output=ds_item.expected_output,
+                    retrieved_contexts=ds_item.contexts,
+                    ground_truth_contexts=ds_item.contexts,
+                    latency_ms=gen_res.latency_ms,
+                    total_tokens=gen_res.total_tokens,
+                )
+                metrics_payload = {k: {"score": v.score, "passed": v.passed, "reason": v.reason} for k, v in eval_dict.items()}
 
-            exp_item = ExperimentItem(
-                experiment_id=experiment.id,
-                dataset_item_id=ds_item.id,
-                query=ds_item.query,
-                response=gen_res.generated_text,
-                expected_output=ds_item.expected_output,
-                metrics=metrics_payload,
-                latency_ms=gen_res.latency_ms,
-                total_tokens=gen_res.total_tokens,
-                cost_usd=gen_res.cost_usd,
-                status="SUCCESS"
-            )
+                trace_outputs["output"] = gen_res.generated_text
+                trace_outputs["metrics"] = {k: v["score"] for k, v in metrics_payload.items()}
+                trace_outputs["latency_ms"] = gen_res.latency_ms
+                trace_outputs["total_tokens"] = gen_res.total_tokens
+                trace_outputs["cost_usd"] = gen_res.cost_usd
+
+                exp_item = ExperimentItem(
+                    experiment_id=experiment.id,
+                    dataset_item_id=ds_item.id,
+                    query=ds_item.query,
+                    response=gen_res.generated_text,
+                    expected_output=ds_item.expected_output,
+                    metrics=metrics_payload,
+                    latency_ms=gen_res.latency_ms,
+                    total_tokens=gen_res.total_tokens,
+                    cost_usd=gen_res.cost_usd,
+                    status="SUCCESS",
+                )
         except Exception as exc:
             exp_item = ExperimentItem(
                 experiment_id=experiment.id,
@@ -205,4 +259,18 @@ async def check_regression(
     base_avg = _get_avg_metrics(baseline)
 
     detector = RegressionDetector(tolerance=tolerance)
-    return detector.detect_regression(candidate_metrics=cand_avg, baseline_metrics=base_avg)
+    async with trace_async_run(
+        name=f"CI Regression Gate - {candidate.name}",
+        run_type="chain",
+        inputs={
+            "candidate_name": candidate.name,
+            "candidate_metrics": cand_avg,
+            "baseline_metrics": base_avg,
+            "tolerance": tolerance,
+        },
+        metadata={"candidate_id": str(candidate.id), "baseline_id": str(baseline.id)},
+    ) as trace_outputs:
+        report = detector.detect_regression(candidate_metrics=cand_avg, baseline_metrics=base_avg)
+        trace_outputs["has_regression"] = report.has_regression
+        trace_outputs["regressed_metrics"] = report.regressed_metrics
+        return report

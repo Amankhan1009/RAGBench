@@ -146,7 +146,7 @@ class TraceManager:
                     headers={"x-api-key": api_key, "Content-Type": "application/json"},
                     json=payload,
                 )
-                if res.status_code in [200, 201]:
+                if res.status_code in [200, 201, 202]:
                     logger.info(f"[LangSmith] Successfully exported trace: {span.name} (id={span.id})")
                 else:
                     logger.warning(f"[LangSmith] Export rejected ({res.status_code}): {res.text}")
