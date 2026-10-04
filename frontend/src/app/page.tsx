@@ -114,7 +114,7 @@ export default function Dashboard() {
   const [expName, setExpName] = useState("");
   const [selectedDataset, setSelectedDataset] = useState("");
   const [provider, setProvider] = useState("groq");
-  const [model, setModel] = useState("llama-3.3-70b-versatile");
+  const [model, setModel] = useState("openai/gpt-oss-120b");
   const [runApiKey, setRunApiKey] = useState("");
   const [saveRunKeyToVault, setSaveRunKeyToVault] = useState(true);
 
@@ -742,7 +742,7 @@ export default function Dashboard() {
                   <label className="block text-slate-400 mb-1">Experiment Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Groq LLaMA-3.3 Evaluation"
+                    placeholder="e.g. Groq GPT-OSS Evaluation"
                     value={expName}
                     onChange={(e) => setExpName(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 focus:border-blue-500 outline-none"
@@ -768,7 +768,7 @@ export default function Dashboard() {
                     value={provider}
                     onChange={(e) => {
                       setProvider(e.target.value);
-                      if (e.target.value === "groq") setModel("llama-3.3-70b-versatile");
+                      if (e.target.value === "groq") setModel("openai/gpt-oss-120b");
                       else if (e.target.value === "openai") setModel("gpt-4o-mini");
                       else if (e.target.value === "anthropic") setModel("claude-3-5-sonnet-20241022");
                       else if (e.target.value === "google") setModel("gemini-1.5-flash");
@@ -777,10 +777,10 @@ export default function Dashboard() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 focus:border-blue-500 outline-none"
                   >
                     <option value="mock">Mock Provider (Deterministic)</option>
-                    <option value="groq">Groq (Ultra-fast Cloud Inference)</option>
-                    <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
-                    <option value="anthropic">Anthropic (Claude 3.5)</option>
-                    <option value="google">Google Gemini (Gemini 1.5)</option>
+                    <option value="groq">Groq (openai/gpt-oss-120b)</option>
+                    <option value="openai">OpenAI (GPT-4o Mini)</option>
+                    <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
+                    <option value="google">Google Gemini (Gemini 1.5 Flash)</option>
                   </select>
                 </div>
 
