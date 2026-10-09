@@ -43,7 +43,7 @@ async def create_experiment(
         raise HTTPException(status_code=404, detail=f"Dataset '{payload.dataset_id}' not found.")
 
     effective_key = payload.api_key
-    if not effective_key:
+    if not effective_key or (effective_key == "mock-key" and payload.provider_name.lower() != "mock"):
         if payload.provider_name.lower() == "mock":
             effective_key = "mock-key"
         else:

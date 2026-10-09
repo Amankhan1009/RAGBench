@@ -12,7 +12,7 @@ class ExperimentCreate(BaseModel):
     dataset_id: uuid.UUID = Field(description="Target dataset ID")
     provider_name: str = Field(default="mock", description="LLM provider name")
     model_name: str = Field(default="mock-model", description="Model ID")
-    api_key: Optional[str] = Field(default="mock-key", description="Optional BYOK key")
+    api_key: Optional[str] = Field(default=None, description="Optional BYOK key")
 
 
 class ExperimentItemResponse(BaseModel):
