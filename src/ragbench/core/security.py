@@ -6,7 +6,7 @@ from ragbench.core.config import settings
 
 def get_cipher_suite() -> Fernet:
     """Instantiate Fernet cipher suite from configured application secret."""
-    key = settings.ENCRYPTION_KEY
+    key = settings.effective_encryption_key
     if len(key) != 44:
         import base64
         key = base64.urlsafe_b64encode(key.encode().ljust(32)[:32]).decode()

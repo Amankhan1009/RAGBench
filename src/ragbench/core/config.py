@@ -11,8 +11,16 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: str = "sqlite+aiosqlite:///:memory:"
     ENCRYPTION_KEY: str = "dGhpcy1pcy1hLXRlc3QtZW5jcnlwdGlvbi1rZXktMTIzNDU="
+    FERNET_KEY: str | None = None
+    SECRET_KEY: str = "default-production-secret-key-change-me"
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_API_KEY: str = ""
+
+    @computed_field
+    @property
+    def effective_encryption_key(self) -> str:
+        """Resolve either FERNET_KEY or ENCRYPTION_KEY seamlessly."""
+        return self.FERNET_KEY or self.ENCRYPTION_KEY
 
     model_config = SettingsConfigDict(
         env_file=".env",
