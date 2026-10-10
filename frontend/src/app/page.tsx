@@ -21,7 +21,7 @@ import {
   Dataset,
   Experiment,
   RegressionReport,
-} from "@/lib/api";
+} from "../lib/api";
 
 function Spinner({ className = "" }: { className?: string }) {
   return (

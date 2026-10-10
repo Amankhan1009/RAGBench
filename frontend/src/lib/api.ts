@@ -1,4 +1,20 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+export function cleanApiBase(url?: string): string {
+  if (!url) return "http://localhost:8000/api/v1";
+  let clean = url.trim().replace(/\/+$/, "");
+  if (!clean.endsWith("/api/v1")) {
+    clean = `${clean}/api/v1`;
+  }
+  return clean;
+}
+
+export function getApiBase(): string {
+  if (typeof window !== "undefined") {
+    const custom = localStorage.getItem("ragbench_api_url");
+    if (custom) return cleanApiBase(custom);
+  }
+  return cleanApiBase(process.env.NEXT_PUBLIC_API_URL);
+}
+
 
 export interface User {
   id: string;
@@ -47,7 +63,7 @@ export async function registerUser(
   password: string,
   name?: string
 ): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/auth/register`, {
+  const res = await fetch(`${getApiBase()}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, name }),
@@ -65,7 +81,7 @@ export async function loginUser(
   email: string,
   password: string
 ): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await fetch(`${getApiBase()}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -82,7 +98,7 @@ export async function loginUser(
 export async function fetchCurrentUser(): Promise<User | null> {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_BASE}/auth/me`, {
+  const res = await fetch(`${getApiBase()}/auth/me`, {
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -144,13 +160,13 @@ export interface RegressionReport {
 }
 
 export async function fetchHealth(): Promise<HealthStatus> {
-  const res = await fetch(`${API_BASE}/health`, { cache: "no-store" });
+  const res = await fetch(`${getApiBase()}/health`, { cache: "no-store" });
   if (!res.ok) throw new Error("Backend offline");
   return res.json();
 }
 
 export async function fetchDatasets(): Promise<Dataset[]> {
-  const res = await fetch(`${API_BASE}/datasets`, {
+  const res = await fetch(`${getApiBase()}/datasets`, {
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -163,7 +179,7 @@ export async function createDataset(payload: {
   description?: string;
   items: DatasetItem[];
 }): Promise<Dataset> {
-  const res = await fetch(`${API_BASE}/datasets`, {
+  const res = await fetch(`${getApiBase()}/datasets`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -173,7 +189,7 @@ export async function createDataset(payload: {
 }
 
 export async function fetchExperiments(): Promise<Experiment[]> {
-  const res = await fetch(`${API_BASE}/experiments`, {
+  const res = await fetch(`${getApiBase()}/experiments`, {
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -188,7 +204,7 @@ export async function runExperiment(payload: {
   model_name?: string;
   api_key?: string;
 }): Promise<Experiment> {
-  const res = await fetch(`${API_BASE}/experiments`, {
+  const res = await fetch(`${getApiBase()}/experiments`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -198,7 +214,7 @@ export async function runExperiment(payload: {
 }
 
 export async function setBaseline(experimentId: string): Promise<Experiment> {
-  const res = await fetch(`${API_BASE}/experiments/${experimentId}/set-baseline`, {
+  const res = await fetch(`${getApiBase()}/experiments/${experimentId}/set-baseline`, {
     method: "POST",
     headers: getAuthHeaders(),
   });
@@ -211,7 +227,7 @@ export async function checkRegression(
   tolerance = 0.02
 ): Promise<RegressionReport> {
   const res = await fetch(
-    `${API_BASE}/experiments/${experimentId}/check-regression?tolerance=${tolerance}`,
+    `${getApiBase()}/experiments/${experimentId}/check-regression?tolerance=${tolerance}`,
     {
       headers: getAuthHeaders(),
       cache: "no-store",
@@ -232,7 +248,7 @@ export interface ApiKeyMetadata {
 }
 
 export async function fetchApiKeys(): Promise<ApiKeyMetadata[]> {
-  const res = await fetch(`${API_BASE}/auth/keys`, {
+  const res = await fetch(`${getApiBase()}/auth/keys`, {
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -244,7 +260,7 @@ export async function registerApiKey(
   provider: string,
   apiKey: string
 ): Promise<ApiKeyMetadata> {
-  const res = await fetch(`${API_BASE}/auth/keys`, {
+  const res = await fetch(`${getApiBase()}/auth/keys`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ provider, api_key: apiKey }),
