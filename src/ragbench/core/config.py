@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: str = "sqlite+aiosqlite:///:memory:"
-    ENCRYPTION_KEY: str = "dGhpcy1pcy1hLXRlc3QtZW5jcnlwdGlvbi1rZXktMTIzNDU="
+    ENCRYPTION_KEY: str = ""
     FERNET_KEY: str | None = None
     SECRET_KEY: str = "default-production-secret-key-change-me"
     LANGCHAIN_TRACING_V2: bool = False

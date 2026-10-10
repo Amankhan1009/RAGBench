@@ -65,7 +65,7 @@ In a third terminal window, run the automated test suite:
 #### 1. Unit & Regression Tests (31 tests)
 ```bash
 DATABASE_URL="sqlite+aiosqlite:///:memory:" \
-ENCRYPTION_KEY="dGhpcy1pcy1hLXRlc3QtZW5jcnlwdGlvbi1rZXktMTIzNDU=" \
+ENCRYPTION_KEY="test-encryption-key-for-local-testing" \
 PYTHONPATH=src \
 .venv/bin/pytest tests/ \
   -k "not test_regression_api_endpoint and not test_dataset_creation and not test_experiment_creation and not test_db_session and not test_health_check" \
@@ -76,7 +76,7 @@ PYTHONPATH=src \
 #### 2. End-to-End Subsystem Verification
 ```bash
 DATABASE_URL="sqlite+aiosqlite:///:memory:" \
-ENCRYPTION_KEY="dGhpcy1pcy1hLXRlc3QtZW5jcnlwdGlvbi1rZXktMTIzNDU=" \
+ENCRYPTION_KEY="test-encryption-key-for-local-testing" \
 PYTHONPATH=src \
 .venv/bin/python scripts/verify_e2e_platform.py
 ```
@@ -91,7 +91,7 @@ PYTHONPATH=src \
 #### 4. Cryptographic Security Tests
 ```bash
 DATABASE_URL="sqlite+aiosqlite:///:memory:" \
-ENCRYPTION_KEY="dGhpcy1pcy1hLXRlc3QtZW5jcnlwdGlvbi1rZXktMTIzNDU=" \
+ENCRYPTION_KEY="test-encryption-key-for-local-testing" \
 PYTHONPATH=src \
 .venv/bin/pytest tests/test_byok.py tests/test_security.py tests/test_jwt.py tests/test_tracing.py -v
 ```

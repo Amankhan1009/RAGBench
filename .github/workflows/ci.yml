@@ -34,7 +34,7 @@ jobs:
         env:
           PYTHONPATH: src
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
-          ENCRYPTION_KEY: "dGhpcy1pcy1hLXRlc3QtZW5jcnlwdGlvbi1rZXktMTIzNDU="
+          ENCRYPTION_KEY: "ci-test-encryption-key-for-testing"
         run: |
           pytest tests/test_agent_evaluator.py tests/test_auth.py tests/test_jwt.py tests/test_byok.py tests/test_tracing.py tests/test_security.py tests/test_providers.py tests/test_deterministic_evaluators.py tests/test_llm_judge_evaluators.py tests/test_groq.py tests/test_regression.py -k "not test_regression_api_endpoint" -v
 

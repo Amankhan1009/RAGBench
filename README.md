@@ -183,7 +183,7 @@ Web Dashboard will be live at: **[http://localhost:3000](http://localhost:3000)*
 ```bash
 # Run complete unit and security test suite
 DATABASE_URL="sqlite+aiosqlite:///:memory:" \
-ENCRYPTION_KEY="dGhpcy1pcy1hLXRlc3QtZW5jcnlwdGlvbi1rZXktMTIzNDU=" \
+ENCRYPTION_KEY="test-encryption-key-for-local-testing" \
 PYTHONPATH=src \
 pytest tests/ -v
 ```
