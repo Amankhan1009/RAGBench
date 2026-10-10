@@ -18,6 +18,12 @@ services:
         sync: false
       - key: PYTHONPATH
         value: /app/src
+      - key: LANGCHAIN_TRACING_V2
+        value: "true"
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: LANGCHAIN_PROJECT
+        value: ragbench
 
   # RAGBench Frontend Next.js Service
   - type: web
