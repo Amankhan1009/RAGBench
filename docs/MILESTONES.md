@@ -19,8 +19,10 @@
 | Phase 14 — Agent Trajectory & Tool Evaluation | **COMPLETED** | 2026-10-03 |
 | Phase 15 — Docker, CI/CD Pipeline, & Productionization | **COMPLETED** | 2026-10-03 |
 | **Milestone v1.0 — Production Verification & Deployment Ready** | **COMPLETED** | 2026-10-09 |
-| Phase 16 — Interactive Visual Analytics & Pareto Frontier | **PLANNED (v2.1)** | Post-Deploy |
-| Phase 17 — Live Evaluation Streaming (SSE) | **PLANNED (v2.2)** | Post-Deploy |
-| Phase 18 — Synthetic AI Test Dataset Generator | **PLANNED (v2.3)** | Post-Deploy |
-| Phase 19 — Dataset Ingestion (CSV/JSONL) & Executive Reports | **PLANNED (v2.4)** | Post-Deploy |
-| Phase 20 — Agent Trajectory Visual Timeline UI | **PLANNED (v2.5)** | Post-Deploy |
+| Phase 16 — Strict Multi-Tenant Isolation & Workspace-Scoped Sessions | **PLANNED (v2.1)** | Post-Deploy |
+| Phase 17 — Interactive Visual Analytics & Pareto Frontier | **PLANNED (v2.2)** | Post-Deploy |
+| Phase 18 — Live Evaluation Streaming (SSE) | **PLANNED (v2.3)** | Post-Deploy |
+| Phase 19 — Synthetic AI Test Dataset Generator | **PLANNED (v2.4)** | Post-Deploy |
+| Phase 20 — Dataset Ingestion (CSV/JSONL) & Executive Reports | **PLANNED (v2.5)** | Post-Deploy |
+| Phase 21 — Agent Trajectory Visual Timeline UI | **PLANNED (v2.6)** | Post-Deploy |
+

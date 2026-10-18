@@ -3,7 +3,7 @@
 ## Executive Summary
 Following the production deployment of **RAGBench v1.0** on Render, the **v2.0 Milestone** evolves RAGBench from a core benchmarking MVP into an **enterprise-grade evaluation and observability platform**.
 
-This document outlines the architecture, data contracts, UI components, and implementation plan for the **5 major features** planned for v2.0.
+This document outlines the architecture, data contracts, UI components, and implementation plan for the **6 major features** planned for v2.0.
 
 ---
 
@@ -133,12 +133,32 @@ Expand RAGBench from pure RAG evaluation into **Agentic AI Benchmarking**, offer
 
 ---
 
+## 6. Strict Multi-Tenant Data Isolation & Workspace-Scoped Sessions
+
+### 6.1 Objective
+Eliminate global visibility of datasets and experiments across users. Ensure 100% strict data boundaries so that every user and team operates in an isolated session/workspace where no external user can see, modify, or evaluate their datasets, benchmarks, baselines, or CI reports.
+
+### 6.2 Key Components
+1. **Workspace-Scoped Schema (`workspace_id` Foreign Keys):**
+   - Attach `workspace_id` foreign keys to the `datasets` and `experiments` tables.
+   - Automatically assign any newly created dataset or experiment to the authenticated user's `workspace_id`.
+2. **Strict Query Boundary Enforcement & Access Control:**
+   - Update all data querying endpoints (`GET /api/v1/datasets`, `GET /api/v1/experiments`, `POST /api/v1/experiments`, etc.) to filter strictly by `workspace_id == current_user.workspace_id`.
+   - Prevent cross-tenant data access: raise strict `404 Not Found` or `403 Forbidden` if an unauthorized user attempts to view, evaluate, or set a baseline for another workspace's records.
+3. **Workspace Switcher & Private Sessions:**
+   - Allow users to create multiple isolated workspaces (e.g., `Personal Sandbox`, `Production QA`, `Client Projects`).
+   - Private personal sessions vs. collaborative team workspaces with member invites.
+
+---
+
 ## Implementation Roadmap & Milestones
 
 | Phase | Feature Description | Complexity | Target Release |
 | :--- | :--- | :--- | :--- |
-| **Phase 16** | Interactive Visual Analytics & Pareto Frontier | Medium | v2.1 |
-| **Phase 17** | Real-Time SSE Streaming & Live Progress Bar | Medium | v2.2 |
-| **Phase 18** | Synthetic AI Test Dataset Generator | Medium-High | v2.3 |
-| **Phase 19** | Dataset Ingestion (CSV/JSONL) & Report Export | Medium | v2.4 |
-| **Phase 20** | Agent Trajectory Visualization & Loop Inspector UI | High | v2.5 |
+| **Phase 16** | Strict Multi-Tenant Isolation & Workspace-Scoped Sessions | Medium | v2.1 |
+| **Phase 17** | Interactive Visual Analytics & Pareto Frontier | Medium | v2.2 |
+| **Phase 18** | Real-Time SSE Streaming & Live Progress Bar | Medium | v2.3 |
+| **Phase 19** | Synthetic AI Test Dataset Generator | Medium-High | v2.4 |
+| **Phase 20** | Dataset Ingestion (CSV/JSONL) & Report Export | Medium | v2.5 |
+| **Phase 21** | Agent Trajectory Visualization & Loop Inspector UI | High | v2.6 |
+
