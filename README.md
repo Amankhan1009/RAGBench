@@ -114,8 +114,9 @@ Every architecture decision, schema, API contract, and operational manual is ful
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — Production deployment to Render and environment configurations.
 
 ### 🚀 Roadmaps & Release Management
-- [**`docs/V2_ROADMAP.md`**](docs/V2_ROADMAP.md) — **Version 2.0 Feature Specifications (Pareto frontier, SSE, synthetic data).**
-- [`docs/PROJECT_ROADMAP.md`](docs/PROJECT_ROADMAP.md) — Multi-phase project delivery timeline.
+- [**`docs/V2_ROADMAP.md`**](docs/V2_ROADMAP.md) — **Version 2.0 Feature Specifications (Strict multi-tenancy, Pareto frontier, SSE, synthetic data).**
+- [**`docs/V3_SECURITY_ROADMAP.md`**](docs/V3_SECURITY_ROADMAP.md) — **Version 3.0 Enterprise AI Security (NVIDIA NeMo Guardrails, Portkey AI Gateway, PII Redaction, Red-Teaming).**
+- [`docs/PROJECT_ROADMAP.md`](docs/PROJECT_ROADMAP.md) — Multi-phase master delivery timeline (Phases 0–27).
 - [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) — Milestone status and release readiness matrix.
 - [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — Historical chronological record of codebase enhancements.
 - [`docs/MILESTONES.md`](docs/MILESTONES.md) — Milestone acceptance criteria and completion records.
@@ -190,16 +191,27 @@ pytest tests/ -v
 
 ---
 
-## 🔮 Coming in Version 2.0
+## 🔮 Future Milestones: Version 2.0 & Version 3.0
 
-Following production deployment to Render, development begins on **v2.0**:
-1. **Interactive Visual Analytics & Pareto Frontier:** Cost/speed vs quality scatter plots and 6-axis metric radar charts.
-2. **Real-Time SSE Streaming:** Live progress bar with streaming token counts, latency, and sample evaluations.
-3. **Synthetic AI Test Dataset Generator:** Automatically generate multi-hop queries, contexts, and answers from raw documentation.
-4. **Drag-and-Drop Ingestion & Reports:** Import CSV / JSONL benchmark datasets and export executive PDF/Markdown summaries.
-5. **Visual Agent Trajectory Inspector:** Interactive thought-tool-action timeline graphs with automated anomaly detection.
+### ⚡ Version 2.0 — Advanced Observability, Streaming & Agent Analytics
+1. **Strict Multi-Tenant Isolation:** Workspace-scoped datasets and isolated private sessions.
+2. **Interactive Visual Analytics & Pareto Frontier:** Cost/speed vs quality scatter plots and 6-axis metric radar charts.
+3. **Real-Time SSE Streaming:** Live progress bar with streaming token counts, latency, and sample evaluations.
+4. **Synthetic AI Test Dataset Generator:** Automatically generate multi-hop queries, contexts, and answers from raw documentation.
+5. **Drag-and-Drop Ingestion & Reports:** Import CSV / JSONL benchmark datasets and export executive PDF/Markdown summaries.
+6. **Visual Agent Trajectory Inspector:** Interactive thought-tool-action timeline graphs with automated anomaly detection.
 
-*Full architectural specs available in [`docs/V2_ROADMAP.md`](docs/V2_ROADMAP.md).*
+*Full architectural specs: [`docs/V2_ROADMAP.md`](docs/V2_ROADMAP.md).*
+
+### 🛡️ Version 3.0 — Enterprise AI Security, Guardrails & LLM Gateway
+1. **NVIDIA NeMo Guardrails Engine:** Input rails, Colang topical steering, and hallucination interceptors.
+2. **Portkey Open-Source AI Gateway:** Multi-provider failover, smart retries, and zero-cost semantic caching.
+3. **Automated PII Masking Pipeline:** Pre-evaluation redaction of sensitive credentials, emails, and SSNs.
+4. **AI Red-Teaming & Adversarial Benchmark Suite:** Automated prompt injection and jailbreak resistance scoring.
+5. **Enterprise RBAC & Tamper-Evident Audit Logging:** Granular role permissions and compliance audit trails.
+6. **Production Traffic Shadowing:** "Golden Set Harvester" turning real-world failures into regression benchmarks.
+
+*Full architectural specs: [`docs/V3_SECURITY_ROADMAP.md`](docs/V3_SECURITY_ROADMAP.md).*
 
 ---
 

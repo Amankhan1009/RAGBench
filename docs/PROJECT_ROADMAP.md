@@ -23,8 +23,23 @@
 
 *Detailed specifications available in [`docs/V2_ROADMAP.md`](V2_ROADMAP.md)*
 
-- [ ] **Phase 16 — Interactive Visual Analytics & Pareto Frontier (Quality vs. Speed/Cost)**
-- [ ] **Phase 17 — Real-Time Streaming & Live Evaluation Progress (SSE)**
-- [ ] **Phase 18 — Synthetic AI Test Dataset Generator (LLM-Assisted)**
-- [ ] **Phase 19 — One-Click Ingestion (CSV / JSONL) & Executive Report Export**
-- [ ] **Phase 20 — Dedicated Agent Trajectory & Loop Inspector UI**
+- [ ] **Phase 16 — Strict Multi-Tenant Isolation & Workspace-Scoped Sessions**
+- [ ] **Phase 17 — Interactive Visual Analytics & Pareto Frontier (Quality vs. Speed/Cost)**
+- [ ] **Phase 18 — Real-Time Streaming & Live Evaluation Progress (SSE)**
+- [ ] **Phase 19 — Synthetic AI Test Dataset Generator (LLM-Assisted)**
+- [ ] **Phase 20 — One-Click Ingestion (CSV / JSONL) & Executive Report Export**
+- [ ] **Phase 21 — Dedicated Agent Trajectory & Loop Inspector UI**
+
+---
+
+## Version 3.0 Roadmap (Enterprise AI Security, Guardrails & Gateway)
+
+*Detailed specifications available in [`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md)*
+
+- [ ] **Phase 22 — Portkey Open-Source AI Gateway & Semantic Cache**
+- [ ] **Phase 23 — NVIDIA NeMo Guardrails Engine (Input/Output/Colang Rails)**
+- [ ] **Phase 24 — Automated PII Masking & Data Sanitization Pipeline**
+- [ ] **Phase 25 — AI Red-Teaming & Adversarial Vulnerability Benchmark Suite**
+- [ ] **Phase 26 — Enterprise RBAC & Tamper-Evident Audit Logging**
+- [ ] **Phase 27 — Production Traffic Shadowing ("Golden Set Harvester")**
+
