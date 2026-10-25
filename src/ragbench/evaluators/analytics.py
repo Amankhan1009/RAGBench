@@ -166,10 +166,11 @@ def calculate_pareto_frontier(
         TrendPoint(
             experiment_id=p.experiment_id,
             name=p.name,
-            timestamp=p.created_at.strftime("%b %d, %H:%M"),
+            timestamp=p.created_at.strftime("%b %d, %H:%M UTC"),
             composite_score=p.composite_score,
             latency_ms=p.latency_ms,
             is_baseline=p.is_baseline,
+            created_at=p.created_at,
         )
         for p in sorted(points, key=lambda x: x.created_at)
     ]

@@ -34,6 +34,7 @@ class TrendPoint(BaseModel):
     composite_score: float
     latency_ms: float
     is_baseline: bool
+    created_at: Optional[datetime] = None
 
 
 class ParetoAnalyticsResponse(BaseModel):

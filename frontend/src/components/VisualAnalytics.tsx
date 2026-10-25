@@ -15,6 +15,46 @@ interface VisualAnalyticsProps {
   experiments: Experiment[];
 }
 
+function formatMilestoneTime(
+  rawIso?: string,
+  fallbackStr?: string
+): { display: string; shortTime: string; tooltip: string } {
+  const target = rawIso;
+  if (target) {
+    try {
+      const d = new Date(target);
+      if (!isNaN(d.getTime())) {
+        const localDate = d.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        });
+        const localTime = d.toLocaleTimeString(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        const utcHours = String(d.getUTCHours()).padStart(2, "0");
+        const utcMinutes = String(d.getUTCMinutes()).padStart(2, "0");
+        const utcStr = `${localDate}, ${utcHours}:${utcMinutes} UTC`;
+        const localDisplay = `${localDate}, ${localTime}`;
+
+        return {
+          display: localDisplay,
+          shortTime: localTime,
+          tooltip: `${localDisplay} (Local Time)\n${utcStr}`,
+        };
+      }
+    } catch {}
+  }
+
+  return {
+    display: fallbackStr || "--",
+    shortTime: fallbackStr || "--",
+    tooltip: fallbackStr || "--",
+  };
+}
+
 export default function VisualAnalytics({
   analyticsData,
   loading,
@@ -843,6 +883,8 @@ export default function VisualAnalytics({
                 const x = trends.length === 1 ? 260 : 55 + (idx / (trends.length - 1)) * 420;
                 const y = 35 + (1.0 - Math.max(0, Math.min(1.0, t.composite_score))) * 130;
                 const isHovered = hoveredTrendId === t.experiment_id;
+                const expInfo = experiments.find((e) => e.id === t.experiment_id);
+                const timeInfo = formatMilestoneTime(t.created_at || expInfo?.created_at, t.timestamp);
 
                 return (
                   <g
@@ -909,19 +951,19 @@ export default function VisualAnalytics({
                       />
                     )}
 
-                    {/* Timestamp Label at bottom */}
+                    {/* Timestamp Label at bottom (Auto-localized to browser timezone) */}
                     <text
                       x={x}
                       y={185}
                       textAnchor="middle"
-                      className={`text-[8.5px] font-mono transition-colors ${
+                      className={`text-[8px] font-mono transition-colors ${
                         isHovered ? "fill-cyan-300 font-bold" : "fill-slate-400"
                       }`}
                     >
-                      {t.timestamp}
+                      {timeInfo.display}
                     </text>
 
-                    <title>{`${t.name} (${t.is_baseline ? "Active Baseline" : "Candidate Run"})\nScore: ${t.composite_score.toFixed(4)}\nLatency: ${t.latency_ms.toFixed(1)}ms\nTimestamp: ${t.timestamp}`}</title>
+                    <title>{`${t.name} (${t.is_baseline ? "Active Baseline" : "Candidate Run"})\nScore: ${t.composite_score.toFixed(4)}\nLatency: ${t.latency_ms.toFixed(1)}ms\n${timeInfo.tooltip}`}</title>
                   </g>
                 );
               })}
@@ -962,6 +1004,7 @@ export default function VisualAnalytics({
                   {trends.map((t, idx) => {
                     const expInfo = experiments.find((e) => e.id === t.experiment_id);
                     const isHovered = hoveredTrendId === t.experiment_id;
+                    const timeInfo = formatMilestoneTime(t.created_at || expInfo?.created_at, t.timestamp);
 
                     return (
                       <tr
@@ -977,7 +1020,9 @@ export default function VisualAnalytics({
                           <div className="truncate max-w-[150px] sm:max-w-[180px]" title={t.name}>
                             {t.name}
                           </div>
-                          <div className="text-[10px] text-slate-500 font-mono">{t.timestamp}</div>
+                          <div className="text-[10px] text-slate-400 font-mono" title={timeInfo.tooltip}>
+                            {timeInfo.display}
+                          </div>
                         </td>
                         <td className="p-2.5 text-slate-400 font-mono text-[11px]">
                           {expInfo?.provider_name ? (

@@ -219,6 +219,7 @@ export interface TrendPoint {
   composite_score: number;
   latency_ms: number;
   is_baseline: boolean;
+  created_at?: string;
 }
 
 export interface ParetoAnalyticsResponse {
