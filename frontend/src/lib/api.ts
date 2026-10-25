@@ -556,3 +556,76 @@ export async function registerApiKey(
   }
   return res.json();
 }
+
+export interface DatasetIngestPayload {
+  name: string;
+  description?: string;
+  version?: string;
+  file_format: "csv" | "jsonl" | "json";
+  content: string;
+  column_mapping?: Record<string, string>;
+}
+
+export interface DatasetIngestResponse {
+  dataset: Dataset;
+  total_ingested: number;
+  skipped_rows: number;
+  warnings: string[];
+}
+
+export async function ingestDataset(
+  payload: DatasetIngestPayload
+): Promise<DatasetIngestResponse> {
+  const res = await fetch(`${getApiBase()}/datasets/ingest`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to ingest dataset");
+  }
+  return res.json();
+}
+
+export function getExportUrl(
+  experimentId: string,
+  format: "markdown" | "csv" | "jsonl"
+): string {
+  return `${getApiBase()}/experiments/${experimentId}/export/${format}`;
+}
+
+export async function fetchExperimentMarkdown(experimentId: string): Promise<string> {
+  const res = await fetch(`${getApiBase()}/experiments/${experimentId}/export/markdown`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to fetch markdown export");
+  }
+  return res.text();
+}
+
+export async function downloadExperimentExport(
+  experimentId: string,
+  format: "csv" | "jsonl" | "markdown",
+  filename?: string
+): Promise<void> {
+  const res = await fetch(`${getApiBase()}/experiments/${experimentId}/export/${format}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to download ${format} export`);
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const ext = format === "markdown" ? "md" : format;
+  a.download = filename || `ragbench_experiment_${experimentId}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}

@@ -36,6 +36,8 @@ import {
 import VisualAnalytics from "../components/VisualAnalytics";
 import LiveEvaluationStream from "../components/LiveEvaluationStream";
 import SyntheticDatasetGenerator from "../components/SyntheticDatasetGenerator";
+import DatasetFileIngestion from "../components/DatasetFileIngestion";
+import ExecutiveReportModal from "../components/ExecutiveReportModal";
 
 function Spinner({ className = "" }: { className?: string }) {
   return (
@@ -83,7 +85,8 @@ export default function Dashboard() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "api_keys">("experiments");
-  const [datasetMode, setDatasetMode] = useState<"synthetic" | "manual">("synthetic");
+  const [datasetMode, setDatasetMode] = useState<"synthetic" | "ingest" | "manual">("synthetic");
+  const [exportModalExp, setExportModalExp] = useState<Experiment | null>(null);
   const [analyticsData, setAnalyticsData] = useState<ParetoAnalyticsResponse | null>(null);
   const [selectedCandidateForAnalytics, setSelectedCandidateForAnalytics] = useState<string>("");
   const [selectedParetoPoint, setSelectedParetoPoint] = useState<ParetoPoint | null>(null);
@@ -977,19 +980,44 @@ export default function Dashboard() {
                 Close
               </button>
               {ciModal.stage === 3 && (
-                <button
-                  onClick={() => {
-                    setCiModal((prev) => ({ ...prev, isOpen: false }));
-                    setActiveTab("regression");
-                  }}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition"
-                >
-                  View in CI Tab →
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const exp = experiments.find((e) => e.id === ciModal.expId);
+                      if (exp) {
+                        setCiModal((prev) => ({ ...prev, isOpen: false }));
+                        setExportModalExp(exp);
+                      }
+                    }}
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5"
+                  >
+                    <span>📊</span>
+                    <span>Export PR Report</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCiModal((prev) => ({ ...prev, isOpen: false }));
+                      setActiveTab("regression");
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition"
+                  >
+                    View in CI Tab →
+                  </button>
+                </>
               )}
             </div>
           </div>
         </div>
+      )}
+
+      {/* EXECUTIVE REPORT EXPORT MODAL */}
+      {exportModalExp && (
+        <ExecutiveReportModal
+          experiment={exportModalExp}
+          onClose={() => setExportModalExp(null)}
+          showToast={showToast}
+        />
       )}
 
       {/* Header */}
@@ -1370,6 +1398,15 @@ export default function Dashboard() {
                                   "Check CI"
                                 )}
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => setExportModalExp(exp)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs rounded-lg transition text-slate-300 hover:text-white font-medium border border-slate-700"
+                                title="Export Executive Summary & Execution Logs"
+                              >
+                                <span>📊</span>
+                                <span>Export</span>
+                              </button>
                             </td>
                           </tr>
                         );
@@ -1457,15 +1494,28 @@ export default function Dashboard() {
                       Evaluated candidate &quot;{regressionReport.expName}&quot; against baseline at {regressionReport.timestamp}.
                     </div>
                   </div>
-                  <span
-                    className={`text-xs px-3 py-1 rounded-full font-bold uppercase ${
-                      regressionReport.report.has_regression
-                        ? "bg-rose-500 text-white"
-                        : "bg-emerald-500 text-white"
-                    }`}
-                  >
-                    {regressionReport.report.has_regression ? "Blocked" : "Approved"}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const exp = experiments.find((e) => e.name === regressionReport.expName || e.id === selectedCandidateForCI);
+                        if (exp) setExportModalExp(exp);
+                      }}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5"
+                    >
+                      <span>📊</span>
+                      <span>Export PR Report</span>
+                    </button>
+                    <span
+                      className={`text-xs px-3 py-1 rounded-full font-bold uppercase ${
+                        regressionReport.report.has_regression
+                          ? "bg-rose-500 text-white"
+                          : "bg-emerald-500 text-white"
+                      }`}
+                    >
+                      {regressionReport.report.has_regression ? "Blocked" : "Approved"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1526,15 +1576,15 @@ export default function Dashboard() {
                 <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
                   <span>Dataset Management</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
-                    v2.4
+                    v2.5 Ingestion &amp; Synthesis
                   </span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Synthesize benchmark test suites using your connected BYOK LLMs or manage test cases manually.
+                  Import CSV/JSONL files, synthesize test suites with BYOK LLMs, or assemble test cases manually.
                 </p>
               </div>
 
-              <div className="flex items-center bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs">
+              <div className="flex items-center bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs gap-1">
                 <button
                   type="button"
                   onClick={() => setDatasetMode("synthetic")}
@@ -1545,7 +1595,19 @@ export default function Dashboard() {
                   }`}
                 >
                   <span>✨</span>
-                  <span>AI Synthetic Generator</span>
+                  <span>AI Synthetic</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDatasetMode("ingest")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
+                    datasetMode === "ingest"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span>📁</span>
+                  <span>Bulk Ingestion</span>
                 </button>
                 <button
                   type="button"
@@ -1563,7 +1625,7 @@ export default function Dashboard() {
             </div>
 
             {/* Mode Content */}
-            {datasetMode === "synthetic" ? (
+            {datasetMode === "synthetic" && (
               <SyntheticDatasetGenerator
                 apiKeys={apiKeys}
                 onDatasetCreated={async (datasetId) => {
@@ -1572,7 +1634,19 @@ export default function Dashboard() {
                 }}
                 showToast={showToast}
               />
-            ) : (
+            )}
+
+            {datasetMode === "ingest" && (
+              <DatasetFileIngestion
+                onDatasetCreated={async (datasetId) => {
+                  await loadAll();
+                  setSelectedDataset(datasetId);
+                }}
+                showToast={showToast}
+              />
+            )}
+
+            {datasetMode === "manual" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-fit">
                   <h2 className="text-lg font-semibold mb-4 text-slate-200">Create Dataset Manually</h2>
@@ -1645,8 +1719,8 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* In Synthetic mode, also display the Active Datasets list at the bottom for quick overview & selection */}
-            {datasetMode === "synthetic" && (
+            {/* In Synthetic and Ingest modes, also display the Active Datasets list at the bottom for quick overview & selection */}
+            {datasetMode !== "manual" && (
               <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                 <div className="flex items-center justify-between mb-4">
                   <div>

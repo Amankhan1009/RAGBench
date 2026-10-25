@@ -1,4 +1,6 @@
 """Tests for Pareto Frontier, Multi-Dimensional Radar, and Quality Analytics."""
+import uuid
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -24,7 +26,7 @@ async def test_pareto_analytics_empty_workspace():
         # Register user
         reg_res = await client.post(
             "/api/v1/auth/register",
-            json={"email": "analytics_empty@test.com", "password": "password123", "name": "Empty User"},
+            json={"email": f"analytics_empty_{uuid.uuid4().hex[:8]}@test.com", "password": "password123", "name": "Empty User"},
         )
         assert reg_res.status_code == 201
         token = reg_res.json()["access_token"]
@@ -48,8 +50,9 @@ async def test_pareto_frontier_calculation_and_domination():
         # 1. Register User
         reg_res = await client.post(
             "/api/v1/auth/register",
-            json={"email": "pareto_calc@test.com", "password": "password123", "name": "Pareto User"},
+            json={"email": f"pareto_calc_{uuid.uuid4().hex[:8]}@test.com", "password": "password123", "name": "Pareto User"},
         )
+        assert reg_res.status_code == 201
         token = reg_res.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -125,16 +128,18 @@ async def test_pareto_analytics_workspace_isolation():
         # User 1
         res1 = await client.post(
             "/api/v1/auth/register",
-            json={"email": "tenant_1_analytics@test.com", "password": "password123", "name": "Tenant 1"},
+            json={"email": f"tenant_1_{uuid.uuid4().hex[:8]}@test.com", "password": "password123", "name": "Tenant 1"},
         )
+        assert res1.status_code == 201
         token1 = res1.json()["access_token"]
         headers1 = {"Authorization": f"Bearer {token1}"}
 
         # User 2
         res2 = await client.post(
             "/api/v1/auth/register",
-            json={"email": "tenant_2_analytics@test.com", "password": "password123", "name": "Tenant 2"},
+            json={"email": f"tenant_2_{uuid.uuid4().hex[:8]}@test.com", "password": "password123", "name": "Tenant 2"},
         )
+        assert res2.status_code == 201
         token2 = res2.json()["access_token"]
         headers2 = {"Authorization": f"Bearer {token2}"}
 

@@ -94,3 +94,22 @@ class SyntheticDatasetResponse(BaseModel):
     provider_used: str
     model_used: str
     latency_ms: float
+
+
+class DatasetIngestRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=255, description="Dataset name")
+    description: Optional[str] = Field(default=None, description="Dataset description")
+    version: str = Field(default="1.0.0", description="Dataset version")
+    file_format: str = Field(default="csv", description="File format: csv, jsonl, or json")
+    content: str = Field(min_length=1, description="Raw file contents")
+    column_mapping: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Optional mapping from schema fields (query, expected_output, contexts) to custom column names",
+    )
+
+
+class DatasetIngestResponse(BaseModel):
+    dataset: DatasetResponse
+    total_ingested: int
+    skipped_rows: int
+    warnings: List[str] = []

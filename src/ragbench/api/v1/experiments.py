@@ -1,9 +1,12 @@
+import csv
+import io
+import json
 import os
 import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import PlainTextResponse, Response, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -627,3 +630,200 @@ async def delete_experiment(
     await db.delete(experiment)
     await db.commit()
     return None
+
+
+@router.get("/{experiment_id}/export/markdown", response_class=PlainTextResponse)
+async def export_experiment_markdown(
+    experiment_id: uuid.UUID,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a clean, GitHub-flavored Markdown executive evaluation report."""
+    stmt = select(Experiment).where(
+        Experiment.id == experiment_id,
+        Experiment.workspace_id == workspace.id,
+    )
+    candidate = (await db.execute(stmt)).scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
+
+    base_stmt = select(Experiment).where(
+        Experiment.dataset_id == candidate.dataset_id,
+        Experiment.workspace_id == workspace.id,
+        Experiment.is_baseline.is_(True),
+    )
+    baseline = (await db.execute(base_stmt)).scalar_one_or_none()
+
+    cand_avg = _get_avg_metrics(candidate)
+    total_tokens = sum(it.total_tokens for it in candidate.items)
+    total_cost = sum(it.cost_usd for it in candidate.items)
+    avg_lat = round(sum(it.latency_ms for it in candidate.items) / max(1, len(candidate.items)), 1)
+
+    verdict_badge = "ℹ️ **BENCHMARK EVALUATION COMPLETE**"
+    regressed_list = []
+    if baseline:
+        base_avg = _get_avg_metrics(baseline)
+        detector = RegressionDetector(tolerance=0.02)
+        report = detector.detect_regression(candidate_metrics=cand_avg, baseline_metrics=base_avg)
+        if report.has_regression:
+            verdict_badge = "❌ **VERDICT: REGRESSION DETECTED**"
+            regressed_list = report.regressed_metrics
+        else:
+            verdict_badge = "✅ **VERDICT: PASS — PRODUCTION READY**"
+    else:
+        base_avg = {}
+
+    lines = [
+        "# 📊 RAGBench Executive Evaluation Report",
+        "",
+        f"> {verdict_badge}",
+        "",
+        "| Field | Value |",
+        "| :--- | :--- |",
+        f"| **Experiment** | `{candidate.name}` (`{candidate.id}`) |",
+        f"| **Provider / Model** | `{candidate.provider_name.upper()}` / `{candidate.model_name}` |",
+        f"| **Active Baseline** | `{baseline.name if baseline else 'None'}` |",
+        f"| **Samples Evaluated** | {len(candidate.items)} |",
+        f"| **Average Latency** | `{avg_lat} ms` |",
+        f"| **Total Tokens** | `{total_tokens:,}` |",
+        f"| **Estimated Cost** | `${total_cost:.5f}` |",
+        "",
+        "## 📈 Metric Score Comparison",
+        "",
+        "| Dimension / Metric | Candidate Score | Baseline Score | Delta | Status |",
+        "| :--- | :---: | :---: | :---: | :---: |",
+    ]
+
+    all_keys = sorted(set(cand_avg.keys()).union(base_avg.keys()))
+    for k in all_keys:
+        c = cand_avg.get(k, 0.0)
+        b = base_avg.get(k, 0.0)
+        diff = round(c - b, 4)
+        diff_str = f"+{diff:.4f}" if diff >= 0 else f"{diff:.4f}"
+        if k in regressed_list:
+            status_badge = "🔻 Regressed"
+        elif diff > 0:
+            status_badge = "🟢 Improved"
+        else:
+            status_badge = "⚪ Unchanged"
+        b_str = f"{b:.4f}" if baseline else "—"
+        lines.append(f"| **{k}** | `{c:.4f}` | `{b_str}` | `{diff_str}` | {status_badge} |")
+
+    lines.extend([
+        "",
+        "## 🧪 Sample Evaluation Log (Preview)",
+        "",
+        "| # | Query | Latency | Tokens | Cost ($) | Status |",
+        "| :---: | :--- | :---: | :---: | :---: | :---: |",
+    ])
+
+    for i, it in enumerate(candidate.items[:15], start=1):
+        q_trunc = it.query.replace("\n", " ").strip()
+        if len(q_trunc) > 60:
+            q_trunc = q_trunc[:57] + "..."
+        lines.append(
+            f"| {i} | {q_trunc} | `{it.latency_ms:.1f}ms` | `{it.total_tokens}` | `${it.cost_usd:.5f}` | `{it.status}` |"
+        )
+
+    lines.extend([
+        "",
+        "---",
+        "*Report generated automatically by [RAGBench Platform](https://ragbench-frontend.onrender.com).*",
+        "",
+    ])
+
+    return PlainTextResponse("\n".join(lines), media_type="text/markdown")
+
+
+@router.get("/{experiment_id}/export/csv")
+async def export_experiment_csv(
+    experiment_id: uuid.UUID,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export all evaluated experiment item records as a standard CSV file."""
+    stmt = select(Experiment).where(
+        Experiment.id == experiment_id,
+        Experiment.workspace_id == workspace.id,
+    )
+    candidate = (await db.execute(stmt)).scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "sample_id",
+        "experiment_id",
+        "query",
+        "response",
+        "expected_output",
+        "latency_ms",
+        "total_tokens",
+        "cost_usd",
+        "status",
+        "metrics_json",
+        "error_message",
+    ])
+
+    for it in candidate.items:
+        writer.writerow([
+            str(it.id),
+            str(it.experiment_id),
+            it.query,
+            it.response,
+            it.expected_output or "",
+            it.latency_ms,
+            it.total_tokens,
+            it.cost_usd,
+            it.status,
+            json.dumps(it.metrics),
+            it.error_message or "",
+        ])
+
+    csv_data = output.getvalue()
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="ragbench_experiment_{experiment_id}.csv"'},
+    )
+
+
+@router.get("/{experiment_id}/export/jsonl")
+async def export_experiment_jsonl(
+    experiment_id: uuid.UUID,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export raw experiment item execution traces as JSON Lines (JSONL)."""
+    stmt = select(Experiment).where(
+        Experiment.id == experiment_id,
+        Experiment.workspace_id == workspace.id,
+    )
+    candidate = (await db.execute(stmt)).scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
+
+    lines = []
+    for it in candidate.items:
+        row = {
+            "sample_id": str(it.id),
+            "experiment_id": str(it.experiment_id),
+            "query": it.query,
+            "response": it.response,
+            "expected_output": it.expected_output,
+            "metrics": it.metrics,
+            "latency_ms": it.latency_ms,
+            "total_tokens": it.total_tokens,
+            "cost_usd": it.cost_usd,
+            "status": it.status,
+            "error_message": it.error_message,
+        }
+        lines.append(json.dumps(row))
+
+    jsonl_data = "\n".join(lines) + "\n"
+    return Response(
+        content=jsonl_data,
+        media_type="application/x-ndjson",
+        headers={"Content-Disposition": f'attachment; filename="ragbench_experiment_{experiment_id}.jsonl"'},
+    )

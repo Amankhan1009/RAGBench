@@ -18,6 +18,8 @@ from ragbench.models.workspace import Workspace, WorkspaceApiKey
 from ragbench.providers.factory import ProviderFactory
 from ragbench.schemas.dataset import (
     DatasetCreate,
+    DatasetIngestRequest,
+    DatasetIngestResponse,
     DatasetItemCreate,
     DatasetItemResponse,
     DatasetResponse,
@@ -25,6 +27,7 @@ from ragbench.schemas.dataset import (
     SyntheticDatasetResponse,
     SyntheticItemPreview,
 )
+from ragbench.services.ingestion import parse_dataset_file
 
 router = APIRouter(prefix="/datasets", tags=["Datasets"])
 
@@ -346,4 +349,70 @@ CRITICAL INSTRUCTIONS:
         provider_used=payload.provider_name,
         model_used=payload.model_name or "default",
         latency_ms=elapsed_ms,
+    )
+
+
+@router.post("/ingest", response_model=DatasetIngestResponse, status_code=status.HTTP_201_CREATED)
+async def ingest_dataset(
+    payload: DatasetIngestRequest,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk ingest evaluation datasets from CSV, JSONL, or JSON text with column mapping."""
+    parsed_items, skipped, warnings = parse_dataset_file(
+        content=payload.content,
+        file_format=payload.file_format,
+        column_mapping=payload.column_mapping,
+    )
+
+    if not parsed_items:
+        detail_msg = "Failed to ingest dataset: No valid evaluation items could be extracted."
+        if warnings:
+            detail_msg += f" Details: {'; '.join(warnings)}"
+        raise HTTPException(
+            status_code=400,
+            detail=detail_msg,
+        )
+
+    dataset = Dataset(
+        name=payload.name,
+        description=payload.description,
+        version=payload.version,
+        workspace_id=workspace.id,
+    )
+    db.add(dataset)
+    await db.flush()
+
+    for item_data in parsed_items:
+        item = DatasetItem(
+            dataset_id=dataset.id,
+            query=item_data.query,
+            expected_output=item_data.expected_output,
+            contexts=item_data.contexts,
+            item_metadata=item_data.item_metadata,
+        )
+        db.add(item)
+
+    await db.commit()
+    await db.refresh(dataset)
+
+    stmt = select(DatasetItem).where(DatasetItem.dataset_id == dataset.id)
+    items_res = (await db.execute(stmt)).scalars().all()
+
+    ds_response = DatasetResponse(
+        id=dataset.id,
+        name=dataset.name,
+        description=dataset.description,
+        version=dataset.version,
+        workspace_id=dataset.workspace_id,
+        created_at=dataset.created_at,
+        updated_at=dataset.updated_at,
+        items=[DatasetItemResponse.model_validate(it) for it in items_res],
+    )
+
+    return DatasetIngestResponse(
+        dataset=ds_response,
+        total_ingested=len(parsed_items),
+        skipped_rows=skipped,
+        warnings=warnings,
     )

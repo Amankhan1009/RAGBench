@@ -23,7 +23,7 @@
 | Phase 17 — Interactive Visual Analytics & Pareto Frontier | **COMPLETED** | 2026-10-25 |
 | Phase 18 — Live Evaluation Streaming (SSE) | **COMPLETED** | 2026-10-25 |
 | Phase 19 — Synthetic AI Test Dataset Generator | **COMPLETED** | 2026-10-25 |
-| Phase 20 — Dataset Ingestion (CSV/JSONL) & Executive Reports | **PLANNED (v2.5)** | Post-Deploy |
+| Phase 20 — Dataset Ingestion (CSV/JSONL) & Executive Reports | **COMPLETED** | 2026-10-25 |
 | Phase 21 — Agent Trajectory Visual Timeline UI | **PLANNED (v2.6)** | Post-Deploy |
 
 ---
