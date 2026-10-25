@@ -197,7 +197,7 @@ export async function fetchHealth(): Promise<HealthStatus> {
   return res.json();
 }
 
-export async function pingBackend(timeoutMs = 5000): Promise<boolean> {
+export async function pingBackend(timeoutMs = 12000): Promise<boolean> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
