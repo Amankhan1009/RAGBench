@@ -554,25 +554,59 @@ export default function VisualAnalytics({
                   );
                 })}
 
-                {/* Baseline Polygon (Amber) */}
+                {/* Baseline Polygon (Amber, dashed outline) */}
                 <polygon
                   points={baselinePolygon}
-                  fill="rgba(245, 158, 11, 0.22)"
+                  fill="rgba(245, 158, 11, 0.25)"
                   stroke="#f59e0b"
-                  strokeWidth="2"
+                  strokeWidth="2.5"
+                  strokeDasharray="6 3"
                 />
 
-                {/* Candidate Polygon (Indigo) */}
+                {/* Candidate Polygon (Indigo, solid outline) */}
                 <polygon
                   points={candidatePolygon}
-                  fill="rgba(99, 102, 241, 0.35)"
+                  fill="rgba(99, 102, 241, 0.30)"
                   stroke="#6366f1"
                   strokeWidth="2"
                 />
+
+                {/* Vertex Markers */}
+                {radarDims.map((d, i) => {
+                  const basePt = getRadarPoint(d.baseline_score, i);
+                  const candPt = getRadarPoint(d.candidate_score, i);
+                  return (
+                    <g key={i}>
+                      {/* Baseline vertex (Amber diamond) */}
+                      <polygon
+                        points={`${basePt.x},${basePt.y - 4} ${basePt.x + 4},${basePt.y} ${basePt.x},${basePt.y + 4} ${basePt.x - 4},${basePt.y}`}
+                        fill="#f59e0b"
+                        stroke="#ffffff"
+                        strokeWidth="1"
+                      />
+                      {/* Candidate vertex (Indigo dot) */}
+                      <circle
+                        cx={candPt.x}
+                        cy={candPt.y}
+                        r="3.5"
+                        fill="#6366f1"
+                        stroke="#ffffff"
+                        strokeWidth="1"
+                      />
+                    </g>
+                  );
+                })}
               </svg>
 
               {/* Legend & Scores Table */}
               <div className="w-full mt-4 space-y-3">
+                {/* Identical Scores Callout if all deltas are 0 */}
+                {radarDims.every((d) => Math.abs(d.candidate_score - d.baseline_score) < 0.0001) && (
+                  <div className="text-center p-2 rounded-lg bg-indigo-950/60 border border-indigo-800 text-[11px] text-indigo-300">
+                    ℹ️ <strong>Identical Performance</strong>: Both runs achieved 100% identical scores across all 5 dimensions (Deltas = +0.000), so the polygons overlap directly.
+                  </div>
+                )}
+
                 <div className="flex items-center justify-center gap-6 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded bg-indigo-500/50 border border-indigo-400" />
@@ -581,7 +615,7 @@ export default function VisualAnalytics({
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded bg-amber-500/50 border border-amber-400" />
+                    <span className="w-3 h-3 rotate-45 bg-amber-500/50 border border-amber-400" />
                     <span className="text-slate-200 font-medium">
                       Baseline: {analyticsData.baseline_name || "Active Baseline"}
                     </span>
