@@ -629,3 +629,91 @@ export async function downloadExperimentExport(
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
 }
+
+export interface ToolCall {
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface AgentStep {
+  step_number: number;
+  thought?: string;
+  tool_call?: ToolCall;
+  observation?: string;
+}
+
+export interface AgentTrajectory {
+  goal: string;
+  steps: AgentStep[];
+  final_response?: string | null;
+  success?: boolean;
+}
+
+export interface StepDiagnostic {
+  step_number: number;
+  tool_name?: string;
+  is_loop_duplicate: boolean;
+  is_redundant: boolean;
+  is_expected_tool?: boolean | null;
+}
+
+export interface AgentTrajectoryReport {
+  total_steps: number;
+  tool_selection_accuracy: number;
+  tool_precision: number;
+  tool_recall: number;
+  loop_detected: boolean;
+  redundant_call_count: number;
+  efficiency_score: number;
+  passed: boolean;
+  step_diagnostics: StepDiagnostic[];
+  details: {
+    tool_sequence?: string[];
+    expected_tools?: string[];
+    missing_expected_tools?: string[];
+    loop_threshold?: number;
+    max_optimal_steps?: number;
+  };
+}
+
+export interface AgentScenarioPreset {
+  id: string;
+  name: string;
+  description: string;
+  category: "optimal" | "loop" | "security" | "inefficient" | string;
+  trajectory: AgentTrajectory;
+  expected_tools: string[];
+  max_optimal_steps: number;
+  loop_threshold: number;
+}
+
+export interface TrajectoryEvaluationRequest {
+  trajectory: AgentTrajectory;
+  expected_tools?: string[];
+  max_optimal_steps?: number;
+  loop_threshold?: number;
+}
+
+export async function fetchAgentScenarios(): Promise<AgentScenarioPreset[]> {
+  const res = await fetch(`${getApiBase()}/agent/scenarios`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch agent trajectory scenarios");
+  return res.json();
+}
+
+export async function evaluateAgentTrajectory(
+  payload: TrajectoryEvaluationRequest
+): Promise<AgentTrajectoryReport> {
+  const res = await fetch(`${getApiBase()}/agent/evaluate-trajectory`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to evaluate agent trajectory");
+  }
+  return res.json();
+}

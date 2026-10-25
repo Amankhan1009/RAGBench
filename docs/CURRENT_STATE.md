@@ -1,13 +1,14 @@
 # RAGBench — Current State
 
-- **Current Status:** Version 2.0 In Progress (Phases 16, 17, 18, 19 & 20 Completed)
-- **Target Status:** Implement Version 2.0 Roadmap ([`docs/V2_ROADMAP.md`](V2_ROADMAP.md))
+- **Current Status:** Version 2.0 COMPLETED (Phases 16, 17, 18, 19, 20 & 21 Completed)
+- **Target Status:** Version 2.0 Production Verification & Milestone v3.0 Planning ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
 - **Completed Components (v2.0):**
   - **Phase 16 (Multi-Tenant Isolation):** Strict workspace-scoped sessions, foreign keys, private datasets/evaluations, delete endpoints, and Render free-tier sleep/wake detector.
   - **Phase 17 (Visual Analytics & Pareto Frontier):** `GET /api/v1/experiments/analytics/pareto` API, 2D Pareto Scatter Plot (Quality vs Latency), 5-Axis Metric Radar (Spider) Chart, and Historical Quality Trendlines.
   - **Phase 18 (Real-Time SSE Streaming):** `POST /api/v1/experiments/stream` SSE endpoint emitting per-sample evaluations, live animated progress bar, rolling ETA ticker, real-time latency/cost meters, and live streaming feed.
   - **Phase 19 (Synthetic AI Test Dataset Generator):** `POST /api/v1/datasets/generate-synthetic` endpoint with support for BYOK LLMs (Groq, OpenAI, Claude, Gemini) and deterministic mock synthesis; interactive dataset builder UI with text upload, 1-10 sample count slider, difficulty distributions (factual, reasoning, adversarial, mixed), inline editing table, and 1-click dataset creation.
   - **Phase 20 (Dataset Ingestion & Executive Reports):** `POST /api/v1/datasets/ingest` bulk ingestion for CSV, JSONL, and JSON with auto-delimiter sniffing and column mapping; download templates; export endpoints (`/export/markdown`, `/export/csv`, `/export/jsonl`); interactive modal for copying GitHub PR Markdown reports, raw CSV/JSONL data downloads, and printable PDF cards.
+  - **Phase 21 (Dedicated Agent Trajectory & Loop Inspector UI):** `GET /api/v1/agent/scenarios` and `POST /api/v1/agent/evaluate-trajectory` APIs; interactive multi-step visual flow timeline graph (`Thought -> Action -> Observation -> Final Answer`); infinite loop & redundant call detector; missing expected tool diagnostic alerts; path efficiency scoring.
 - **Completed Components (v1.0):**
   - Full hybrid evaluation engine (Deterministic + LLM-as-a-Judge)
   - 100% Model-independent LLM provider abstraction layer (Groq, OpenAI, Anthropic, Google Gemini)
@@ -18,5 +19,5 @@
   - Multi-stage Docker packaging (`Dockerfile` with dynamic port binding)
   - Render blueprint deployment configuration (`render.yaml` on Free Tier)
   - Automated GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`)
-- **Verified Test Suite:** 50+ unit, integration, analytics, streaming, ingestion, and regression tests passing + clean TypeScript checks.
-- **Next Milestone:** Phase 21 — Agent Trajectory Visualization & Loop Inspector UI
+- **Verified Test Suite:** 55+ unit, integration, analytics, streaming, ingestion, and agent trajectory tests passing + clean TypeScript checks.
+- **Next Milestone:** Milestone v3.0 — Enterprise AI Security, Guardrails & LLM Gateway ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))

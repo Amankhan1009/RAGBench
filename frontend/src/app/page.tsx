@@ -38,6 +38,7 @@ import LiveEvaluationStream from "../components/LiveEvaluationStream";
 import SyntheticDatasetGenerator from "../components/SyntheticDatasetGenerator";
 import DatasetFileIngestion from "../components/DatasetFileIngestion";
 import ExecutiveReportModal from "../components/ExecutiveReportModal";
+import AgentTrajectoryInspector from "../components/AgentTrajectoryInspector";
 
 function Spinner({ className = "" }: { className?: string }) {
   return (
@@ -84,7 +85,7 @@ export default function Dashboard() {
   const [wakeProgress, setWakeProgress] = useState<{ attempt: number; maxAttempts: number } | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
-  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "api_keys">("experiments");
+  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "agent" | "api_keys">("experiments");
   const [datasetMode, setDatasetMode] = useState<"synthetic" | "ingest" | "manual">("synthetic");
   const [exportModalExp, setExportModalExp] = useState<Experiment | null>(null);
   const [analyticsData, setAnalyticsData] = useState<ParetoAnalyticsResponse | null>(null);
@@ -1116,7 +1117,7 @@ export default function Dashboard() {
 
       {/* Navigation Tabs */}
       <div className="max-w-7xl mx-auto mt-8 flex flex-wrap border-b border-slate-800 gap-8">
-        {(["experiments", "analytics", "regression", "datasets", "api_keys"] as const).map((tab) => (
+        {(["experiments", "analytics", "regression", "datasets", "agent", "api_keys"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1140,7 +1141,15 @@ export default function Dashboard() {
               <>
                 <span>Datasets</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
-                  AI Generator
+                  AI &amp; Ingestion
+                </span>
+              </>
+            )}
+            {tab === "agent" && (
+              <>
+                <span>Agent Trajectories</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
+                  v2.6
                 </span>
               </>
             )}
@@ -1787,6 +1796,11 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+        )}
+
+        {/* TAB: AGENT BENCHMARK & TRAJECTORIES (v2.6) */}
+        {activeTab === "agent" && (
+          <AgentTrajectoryInspector showToast={showToast} />
         )}
 
         {/* TAB 4: API KEYS (BYOK) */}

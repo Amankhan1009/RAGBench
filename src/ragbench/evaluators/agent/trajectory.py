@@ -23,6 +23,14 @@ class AgentTrajectory(BaseModel):
     success: bool = True
 
 
+class StepDiagnostic(BaseModel):
+    step_number: int
+    tool_name: Optional[str] = None
+    is_loop_duplicate: bool = False
+    is_redundant: bool = False
+    is_expected_tool: Optional[bool] = None
+
+
 class AgentTrajectoryReport(BaseModel):
     total_steps: int
     tool_selection_accuracy: float
@@ -32,6 +40,7 @@ class AgentTrajectoryReport(BaseModel):
     redundant_call_count: int
     efficiency_score: float
     passed: bool
+    step_diagnostics: List[StepDiagnostic] = Field(default_factory=list)
     details: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -58,24 +67,32 @@ class TrajectoryEvaluator:
         seen_calls: Dict[tuple, int] = {}
         redundant_count = 0
         loop_detected = False
+        duplicate_indices: set = set()
+        redundant_indices: set = set()
 
-        for call in executed_calls:
-            seen_calls[call] = seen_calls.get(call, 0) + 1
-            if seen_calls[call] >= self.loop_threshold:
+        for call_tuple, step in zip(executed_calls, [s for s in trajectory.steps if s.tool_call]):
+            seen_calls[call_tuple] = seen_calls.get(call_tuple, 0) + 1
+            if seen_calls[call_tuple] >= self.loop_threshold:
                 loop_detected = True
-            if seen_calls[call] > 1:
+                duplicate_indices.add(step.step_number)
+            if seen_calls[call_tuple] > 1:
                 redundant_count += 1
+                redundant_indices.add(step.step_number)
 
         # Check consecutive identical calls
+        steps_with_tools = [s for s in trajectory.steps if s.tool_call]
         for i in range(len(executed_calls) - 1):
             if executed_calls[i] == executed_calls[i + 1]:
                 loop_detected = True
+                duplicate_indices.add(steps_with_tools[i + 1].step_number)
 
         # 2. Tool Precision and Recall against Expected Tools
+        missing_expected_tools: List[str] = []
         if expected_tools:
             executed_unique = set(tool_sequence)
             expected_unique = set(expected_tools)
             common = executed_unique.intersection(expected_unique)
+            missing_expected_tools = [t for t in expected_tools if t not in executed_unique]
 
             precision = len(common) / len(executed_unique) if executed_unique else 0.0
             recall = len(common) / len(expected_unique) if expected_unique else 0.0
@@ -88,6 +105,24 @@ class TrajectoryEvaluator:
             precision = 1.0
             recall = 1.0
             accuracy = 1.0
+
+        # Build step diagnostics
+        step_diagnostics: List[StepDiagnostic] = []
+        for step in trajectory.steps:
+            t_name = step.tool_call.name if step.tool_call else None
+            is_expected = None
+            if expected_tools and t_name:
+                is_expected = t_name in expected_tools
+
+            step_diagnostics.append(
+                StepDiagnostic(
+                    step_number=step.step_number,
+                    tool_name=t_name,
+                    is_loop_duplicate=step.step_number in duplicate_indices,
+                    is_redundant=step.step_number in redundant_indices,
+                    is_expected_tool=is_expected,
+                )
+            )
 
         # 3. Efficiency Score
         step_count = len(trajectory.steps)
@@ -109,9 +144,12 @@ class TrajectoryEvaluator:
             redundant_call_count=redundant_count,
             efficiency_score=efficiency,
             passed=passed,
+            step_diagnostics=step_diagnostics,
             details={
                 "tool_sequence": tool_sequence,
                 "expected_tools": expected_tools or [],
+                "missing_expected_tools": missing_expected_tools,
                 "loop_threshold": self.loop_threshold,
+                "max_optimal_steps": max_optimal_steps,
             },
         )
