@@ -26,6 +26,8 @@ export default function VisualAnalytics({
   onNavigateToExperiments,
   experiments,
 }: VisualAnalyticsProps) {
+  const [hoveredPointId, setHoveredPointId] = React.useState<string | null>(null);
+
   // If no experiments evaluated yet
   if (!analyticsData || analyticsData.total_experiments === 0) {
     return (
@@ -304,64 +306,91 @@ export default function VisualAnalytics({
                 const cx = getX(p.latency_ms);
                 const cy = getY(p.composite_score);
                 const isSelected = selectedPoint?.experiment_id === p.experiment_id;
+                const isHovered = hoveredPointId === p.experiment_id;
 
                 if (p.is_baseline) {
+                  const size = isSelected ? 9.5 : isHovered ? 8.5 : 7;
                   return (
                     <g
                       key={p.experiment_id}
                       onClick={() => onSelectPoint(p)}
-                      className="cursor-pointer group"
+                      onMouseEnter={() => setHoveredPointId(p.experiment_id)}
+                      onMouseLeave={() => setHoveredPointId(null)}
+                      className="cursor-pointer"
                     >
+                      {/* Generous invisible hit target for effortless clicking */}
+                      <circle cx={cx} cy={cy} r="16" fill="transparent" />
                       <polygon
-                        points={`${cx},${cy - 8} ${cx + 8},${cy} ${cx},${cy + 8} ${cx - 8},${cy}`}
+                        points={`${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}`}
                         fill="#f59e0b"
                         stroke="#ffffff"
-                        strokeWidth={isSelected ? "3" : "1.5"}
-                        className="transition hover:scale-125"
+                        strokeWidth={isSelected || isHovered ? "2.5" : "1.5"}
+                        className="transition-all duration-150"
                       />
-                      <title>{`${p.name} (Active Baseline)\nScore: ${p.composite_score}\nLatency: ${p.latency_ms}ms`}</title>
+                      <title>{`${p.name} (Active Baseline)\nScore: ${p.composite_score.toFixed(4)}\nLatency: ${p.latency_ms.toFixed(1)}ms`}</title>
                     </g>
                   );
                 }
 
                 if (p.is_pareto_optimal) {
+                  const r = isSelected ? 9 : isHovered ? 8 : 6.5;
                   return (
                     <g
                       key={p.experiment_id}
                       onClick={() => onSelectPoint(p)}
-                      className="cursor-pointer group"
+                      onMouseEnter={() => setHoveredPointId(p.experiment_id)}
+                      onMouseLeave={() => setHoveredPointId(null)}
+                      className="cursor-pointer"
                     >
+                      {/* Subtle breathing halo for Pareto optimality (fixed origin, pointer-events-none) */}
                       <circle
                         cx={cx}
                         cy={cy}
-                        r={isSelected ? "9" : "7"}
+                        r={isSelected ? 16 : isHovered ? 14 : 12}
+                        fill="rgba(16, 185, 129, 0.12)"
+                        stroke="#10b981"
+                        strokeWidth="1.2"
+                        strokeDasharray="3 3"
+                        className="pointer-events-none transition-all duration-200"
+                      />
+                      {/* Main solid Pareto circle */}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={r}
                         fill="#10b981"
                         stroke="#ffffff"
-                        strokeWidth={isSelected ? "3" : "2"}
-                        className="transition hover:scale-125 shadow-lg"
+                        strokeWidth={isSelected || isHovered ? "2.5" : "1.5"}
+                        className="transition-all duration-150"
                       />
-                      <circle cx={cx} cy={cy} r="14" fill="none" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" className="animate-spin" />
-                      <title>{`${p.name} (Pareto Optimal)\nScore: ${p.composite_score}\nLatency: ${p.latency_ms}ms`}</title>
+                      {/* Generous invisible hit target */}
+                      <circle cx={cx} cy={cy} r="16" fill="transparent" />
+                      <title>{`${p.name} (Pareto Optimal)\nScore: ${p.composite_score.toFixed(4)}\nLatency: ${p.latency_ms.toFixed(1)}ms`}</title>
                     </g>
                   );
                 }
 
+                const r = isSelected ? 7.5 : isHovered ? 6.5 : 5;
                 return (
                   <g
                     key={p.experiment_id}
                     onClick={() => onSelectPoint(p)}
-                    className="cursor-pointer group"
+                    onMouseEnter={() => setHoveredPointId(p.experiment_id)}
+                    onMouseLeave={() => setHoveredPointId(null)}
+                    className="cursor-pointer"
                   >
+                    {/* Generous invisible hit target */}
+                    <circle cx={cx} cy={cy} r="14" fill="transparent" />
                     <circle
                       cx={cx}
                       cy={cy}
-                      r={isSelected ? "7" : "5"}
-                      fill="#334155"
-                      stroke="#94a3b8"
-                      strokeWidth={isSelected ? "2.5" : "1.5"}
-                      className="transition hover:scale-125"
+                      r={r}
+                      fill={isHovered ? "#475569" : "#334155"}
+                      stroke={isHovered ? "#ffffff" : "#94a3b8"}
+                      strokeWidth={isSelected || isHovered ? "2" : "1.5"}
+                      className="transition-all duration-150"
                     />
-                    <title>{`${p.name}\nScore: ${p.composite_score}\nLatency: ${p.latency_ms}ms`}</title>
+                    <title>{`${p.name}\nScore: ${p.composite_score.toFixed(4)}\nLatency: ${p.latency_ms.toFixed(1)}ms`}</title>
                   </g>
                 );
               })}
