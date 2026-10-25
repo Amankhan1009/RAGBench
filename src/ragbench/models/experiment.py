@@ -1,6 +1,9 @@
 """SQLAlchemy models for Experiments and Experiment Items."""
 import uuid
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from ragbench.models.workspace import Workspace
 
 from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -19,11 +22,18 @@ class Experiment(Base, BaseMixin):
         nullable=False,
         index=True
     )
+    workspace_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
     provider_name: Mapped[str] = mapped_column(String(100), nullable=False)
     model_name: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
     is_baseline: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="experiments")
     items: Mapped[List["ExperimentItem"]] = relationship(
         "ExperimentItem",
         back_populates="experiment",

@@ -16,6 +16,8 @@ class Workspace(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     api_keys = relationship("WorkspaceApiKey", back_populates="workspace", cascade="all, delete-orphan")
+    datasets = relationship("Dataset", back_populates="workspace", cascade="all, delete-orphan")
+    experiments = relationship("Experiment", back_populates="workspace", cascade="all, delete-orphan")
 
 
 class WorkspaceApiKey(Base):

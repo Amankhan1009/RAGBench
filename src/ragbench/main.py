@@ -16,12 +16,51 @@ from ragbench.db.base import Base
 from ragbench.db.session import get_engine
 
 
+def _migrate_schema_sync(connection):
+    """Ensure multi-tenant workspace_id columns exist on legacy tables and backfill default workspace."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(connection)
+
+    # 1. Ensure default workspace exists
+    try:
+        if connection.dialect.name == "sqlite":
+            connection.execute(text(
+                "INSERT OR IGNORE INTO workspaces (id, name, api_key) "
+                "VALUES ('default-workspace-id', 'Default Workspace', 'default-workspace-key')"
+            ))
+        else:
+            connection.execute(text(
+                "INSERT INTO workspaces (id, name, api_key) "
+                "VALUES ('default-workspace-id', 'Default Workspace', 'default-workspace-key') "
+                "ON CONFLICT (id) DO NOTHING"
+            ))
+    except Exception as exc:
+        logger.warning(f"[Migration] Workspace seed check: {exc}")
+
+    # 2. Check datasets table
+    if "datasets" in inspector.get_table_names():
+        columns = [col["name"] for col in inspector.get_columns("datasets")]
+        if "workspace_id" not in columns:
+            logger.info("[Migration] Adding missing workspace_id to datasets table...")
+            connection.execute(text("ALTER TABLE datasets ADD COLUMN workspace_id VARCHAR(36) DEFAULT 'default-workspace-id'"))
+            connection.execute(text("UPDATE datasets SET workspace_id = 'default-workspace-id' WHERE workspace_id IS NULL"))
+
+    # 3. Check experiments table
+    if "experiments" in inspector.get_table_names():
+        columns = [col["name"] for col in inspector.get_columns("experiments")]
+        if "workspace_id" not in columns:
+            logger.info("[Migration] Adding missing workspace_id to experiments table...")
+            connection.execute(text("ALTER TABLE experiments ADD COLUMN workspace_id VARCHAR(36) DEFAULT 'default-workspace-id'"))
+            connection.execute(text("UPDATE experiments SET workspace_id = 'default-workspace-id' WHERE workspace_id IS NULL"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"{settings.APP_NAME} starting up in [{settings.ENVIRONMENT}] mode.")
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_migrate_schema_sync)
     yield
     logger.info(f"{settings.APP_NAME} shutting down.")
 

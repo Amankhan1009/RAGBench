@@ -37,6 +37,7 @@ class ExperimentResponse(BaseModel):
     name: str
     description: Optional[str] = None
     dataset_id: uuid.UUID
+    workspace_id: Optional[str] = None
     provider_name: str
     model_name: str
     status: str

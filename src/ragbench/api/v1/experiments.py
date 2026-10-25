@@ -36,11 +36,14 @@ async def create_experiment(
     workspace: Workspace = Depends(get_current_workspace),
     db: AsyncSession = Depends(get_db),
 ):
-    """Launch an evaluation experiment across dataset items."""
-    stmt = select(Dataset).where(Dataset.id == payload.dataset_id)
+    """Launch an evaluation experiment across dataset items within the active workspace."""
+    stmt = select(Dataset).where(
+        Dataset.id == payload.dataset_id,
+        Dataset.workspace_id == workspace.id,
+    )
     dataset = (await db.execute(stmt)).scalar_one_or_none()
     if not dataset:
-        raise HTTPException(status_code=404, detail=f"Dataset '{payload.dataset_id}' not found.")
+        raise HTTPException(status_code=404, detail=f"Dataset '{payload.dataset_id}' not found in active workspace.")
 
     effective_key = payload.api_key
     if not effective_key or (effective_key == "mock-key" and payload.provider_name.lower() != "mock"):
@@ -81,6 +84,7 @@ async def create_experiment(
         name=payload.name,
         description=payload.description,
         dataset_id=payload.dataset_id,
+        workspace_id=workspace.id,
         provider_name=payload.provider_name,
         model_name=payload.model_name,
         status="RUNNING"
@@ -150,33 +154,57 @@ async def create_experiment(
     await db.refresh(experiment)
     return experiment
 
+
 @router.get("", response_model=List[ExperimentResponse])
-async def list_experiments(db: AsyncSession = Depends(get_db)):
-    """List all evaluation experiments ordered by creation time."""
-    stmt = select(Experiment).order_by(Experiment.created_at.desc())
+async def list_experiments(
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db)
+):
+    """List all evaluation experiments belonging to the active workspace."""
+    stmt = (
+        select(Experiment)
+        .where(Experiment.workspace_id == workspace.id)
+        .order_by(Experiment.created_at.desc())
+    )
     res = await db.execute(stmt)
     return res.scalars().all()
 
+
 @router.get("/{experiment_id}", response_model=ExperimentResponse)
-async def get_experiment(experiment_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Retrieve an experiment run by ID."""
-    stmt = select(Experiment).where(Experiment.id == experiment_id)
+async def get_experiment(
+    experiment_id: uuid.UUID,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retrieve an experiment run by ID within the active workspace."""
+    stmt = select(Experiment).where(
+        Experiment.id == experiment_id,
+        Experiment.workspace_id == workspace.id,
+    )
     experiment = (await db.execute(stmt)).scalar_one_or_none()
     if not experiment:
-        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
     return experiment
 
 
 @router.post("/{experiment_id}/set-baseline", response_model=ExperimentResponse)
-async def set_baseline(experiment_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Mark experiment as the active baseline for its dataset."""
-    stmt = select(Experiment).where(Experiment.id == experiment_id)
+async def set_baseline(
+    experiment_id: uuid.UUID,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mark experiment as the active baseline for its dataset within the active workspace."""
+    stmt = select(Experiment).where(
+        Experiment.id == experiment_id,
+        Experiment.workspace_id == workspace.id,
+    )
     experiment = (await db.execute(stmt)).scalar_one_or_none()
     if not experiment:
-        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
 
     clear_stmt = select(Experiment).where(
         Experiment.dataset_id == experiment.dataset_id,
+        Experiment.workspace_id == workspace.id,
         Experiment.is_baseline.is_(True),
     )
     existing_baselines = (await db.execute(clear_stmt)).scalars().all()
@@ -200,14 +228,25 @@ def _get_avg_metrics(exp: Experiment) -> dict[str, float]:
 
 
 @router.get("/{experiment_id}/compare", response_model=ComparisonDelta)
-async def compare_experiment(experiment_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Compare candidate experiment against the active baseline."""
-    stmt = select(Experiment).where(Experiment.id == experiment_id)
+async def compare_experiment(
+    experiment_id: uuid.UUID,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db)
+):
+    """Compare candidate experiment against the active baseline within the active workspace."""
+    stmt = select(Experiment).where(
+        Experiment.id == experiment_id,
+        Experiment.workspace_id == workspace.id,
+    )
     candidate = (await db.execute(stmt)).scalar_one_or_none()
     if not candidate:
-        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
 
-    base_stmt = select(Experiment).where(Experiment.dataset_id == candidate.dataset_id, Experiment.is_baseline.is_(True))
+    base_stmt = select(Experiment).where(
+        Experiment.dataset_id == candidate.dataset_id,
+        Experiment.workspace_id == workspace.id,
+        Experiment.is_baseline.is_(True),
+    )
     baseline = (await db.execute(base_stmt)).scalar_one_or_none()
     if not baseline:
         raise HTTPException(status_code=400, detail="No active baseline set for this dataset.")
@@ -239,16 +278,21 @@ async def compare_experiment(experiment_id: uuid.UUID, db: AsyncSession = Depend
 async def check_regression(
     experiment_id: uuid.UUID,
     tolerance: float = Query(default=0.02, ge=0.0, le=1.0, description="Max allowed score drop"),
+    workspace: Workspace = Depends(get_current_workspace),
     db: AsyncSession = Depends(get_db)
 ):
-    """Evaluate candidate experiment against active baseline for quality regressions."""
-    stmt = select(Experiment).where(Experiment.id == experiment_id)
+    """Evaluate candidate experiment against active baseline for quality regressions within workspace."""
+    stmt = select(Experiment).where(
+        Experiment.id == experiment_id,
+        Experiment.workspace_id == workspace.id,
+    )
     candidate = (await db.execute(stmt)).scalar_one_or_none()
     if not candidate:
-        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
 
     base_stmt = select(Experiment).where(
         Experiment.dataset_id == candidate.dataset_id,
+        Experiment.workspace_id == workspace.id,
         Experiment.is_baseline.is_(True),
     )
     baseline = (await db.execute(base_stmt)).scalar_one_or_none()
@@ -274,3 +318,22 @@ async def check_regression(
         trace_outputs["has_regression"] = report.has_regression
         trace_outputs["regressed_metrics"] = report.regressed_metrics
         return report
+
+
+@router.delete("/{experiment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_experiment(
+    experiment_id: uuid.UUID,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete an experiment run belonging to the active workspace."""
+    stmt = select(Experiment).where(
+        Experiment.id == experiment_id,
+        Experiment.workspace_id == workspace.id,
+    )
+    experiment = (await db.execute(stmt)).scalar_one_or_none()
+    if not experiment:
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
+    await db.delete(experiment)
+    await db.commit()
+    return None

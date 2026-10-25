@@ -23,7 +23,7 @@
 
 *Detailed specifications available in [`docs/V2_ROADMAP.md`](V2_ROADMAP.md)*
 
-- [ ] **Phase 16 — Strict Multi-Tenant Isolation & Workspace-Scoped Sessions**
+- [x] **Phase 16 — Strict Multi-Tenant Isolation & Workspace-Scoped Sessions**
 - [ ] **Phase 17 — Interactive Visual Analytics & Pareto Frontier (Quality vs. Speed/Cost)**
 - [ ] **Phase 18 — Real-Time Streaming & Live Evaluation Progress (SSE)**
 - [ ] **Phase 19 — Synthetic AI Test Dataset Generator (LLM-Assisted)**

@@ -1,6 +1,9 @@
 """SQLAlchemy models for Datasets and Dataset Items."""
 import uuid
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from ragbench.models.workspace import Workspace
 
 from sqlalchemy import JSON, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -15,7 +18,14 @@ class Dataset(Base, BaseMixin):
     name: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     version: Mapped[str] = mapped_column(String(50), default="1.0.0", nullable=False)
+    workspace_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
 
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="datasets")
     items: Mapped[List["DatasetItem"]] = relationship(
         "DatasetItem",
         back_populates="dataset",
