@@ -708,3 +708,4 @@ export default function VisualAnalytics({
     </div>
   );
 }
+

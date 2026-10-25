@@ -183,3 +183,4 @@ def calculate_pareto_frontier(
         baseline_name=baseline_exp.name if baseline_exp else None,
         trends=trends,
     )
+

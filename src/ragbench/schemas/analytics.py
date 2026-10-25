@@ -43,3 +43,4 @@ class ParetoAnalyticsResponse(BaseModel):
     candidate_name: Optional[str] = None
     baseline_name: Optional[str] = None
     trends: List[TrendPoint]
+
