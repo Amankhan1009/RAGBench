@@ -97,7 +97,7 @@ async def test_pareto_frontier_calculation_and_domination():
             },
         )
         assert exp_b.status_code == 201
-        exp_b_id = exp_b.json()["id"]
+        assert exp_b.json()["id"] is not None
 
         # 5. Query Pareto analytics
         res = await client.get("/api/v1/experiments/analytics/pareto", headers=headers)

@@ -1,6 +1,6 @@
 """Pareto frontier calculation, radar dimensions, and quality analytics engine."""
-from typing import Dict, List, Optional, Tuple
 import uuid
+from typing import Dict, List, Optional, Tuple
 
 from ragbench.models.experiment import Experiment
 from ragbench.schemas.analytics import (
