@@ -35,6 +35,7 @@ import {
 } from "../lib/api";
 import VisualAnalytics from "../components/VisualAnalytics";
 import LiveEvaluationStream from "../components/LiveEvaluationStream";
+import SyntheticDatasetGenerator from "../components/SyntheticDatasetGenerator";
 
 function Spinner({ className = "" }: { className?: string }) {
   return (
@@ -82,6 +83,7 @@ export default function Dashboard() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "api_keys">("experiments");
+  const [datasetMode, setDatasetMode] = useState<"synthetic" | "manual">("synthetic");
   const [analyticsData, setAnalyticsData] = useState<ParetoAnalyticsResponse | null>(null);
   const [selectedCandidateForAnalytics, setSelectedCandidateForAnalytics] = useState<string>("");
   const [selectedParetoPoint, setSelectedParetoPoint] = useState<ParetoPoint | null>(null);
@@ -1106,7 +1108,14 @@ export default function Dashboard() {
               </>
             )}
             {tab === "regression" && "Regression & CI Gates"}
-            {tab === "datasets" && "Datasets"}
+            {tab === "datasets" && (
+              <>
+                <span>Datasets</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+                  AI Generator
+                </span>
+              </>
+            )}
             {tab === "api_keys" && (
               <>
                 <span>API Keys (BYOK)</span>
@@ -1510,75 +1519,199 @@ export default function Dashboard() {
 
         {/* TAB 3: DATASETS */}
         {activeTab === "datasets" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-fit">
-              <h2 className="text-lg font-semibold mb-4 text-slate-200">Create Dataset</h2>
-              <form onSubmit={handleCreateDataset} className="space-y-4 text-sm">
-                <div>
-                  <label className="block text-slate-400 mb-1">Dataset Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Production QA Suite"
-                    value={dsName}
-                    onChange={(e) => setDsName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 outline-none focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1">Sample Query</label>
-                  <textarea
-                    rows={2}
-                    placeholder="User question or prompt"
-                    value={dsQuery}
-                    onChange={(e) => setDsQuery(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 outline-none focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1">Expected Output (Optional)</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Ground truth answer"
-                    value={dsOutput}
-                    onChange={(e) => setDsOutput(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 outline-none focus:border-blue-500"
-                  />
-                </div>
+          <div className="space-y-8 animate-in fade-in duration-300">
+            {/* Mode Switch Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+              <div>
+                <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                  <span>Dataset Management</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+                    v2.4
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Synthesize benchmark test suites using your connected BYOK LLMs or manage test cases manually.
+                </p>
+              </div>
+
+              <div className="flex items-center bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs">
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded-lg transition disabled:opacity-50"
+                  type="button"
+                  onClick={() => setDatasetMode("synthetic")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
+                    datasetMode === "synthetic"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
                 >
-                  {loading && <Spinner />}
-                  {loading ? "Creating..." : "Create Dataset"}
+                  <span>✨</span>
+                  <span>AI Synthetic Generator</span>
                 </button>
-              </form>
+                <button
+                  type="button"
+                  onClick={() => setDatasetMode("manual")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
+                    datasetMode === "manual"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span>📝</span>
+                  <span>Manual Entry</span>
+                </button>
+              </div>
             </div>
 
-            <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-xl">
-              <h2 className="text-lg font-semibold mb-4 text-slate-200">Existing Datasets ({datasets.length})</h2>
-              {datasets.length === 0 ? (
-                <div className="text-slate-500 text-center py-12">No datasets created yet.</div>
-              ) : (
-                <div className="space-y-4">
-                  {datasets.map((d) => (
-                    <div key={d.id} className="p-4 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center">
-                      <div>
-                        <div className="font-medium text-slate-200">{d.name}</div>
-                        <div className="text-xs text-slate-500">
-                          ID: {d.id} | Version: v{d.version} | Items: {d.items?.length || 0}
+            {/* Mode Content */}
+            {datasetMode === "synthetic" ? (
+              <SyntheticDatasetGenerator
+                apiKeys={apiKeys}
+                onDatasetCreated={async (datasetId) => {
+                  await loadAll();
+                  setSelectedDataset(datasetId);
+                }}
+                showToast={showToast}
+              />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-fit">
+                  <h2 className="text-lg font-semibold mb-4 text-slate-200">Create Dataset Manually</h2>
+                  <form onSubmit={handleCreateDataset} className="space-y-4 text-sm">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Dataset Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Production QA Suite"
+                        value={dsName}
+                        onChange={(e) => setDsName(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 outline-none focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Sample Query</label>
+                      <textarea
+                        rows={2}
+                        placeholder="User question or prompt"
+                        value={dsQuery}
+                        onChange={(e) => setDsQuery(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 outline-none focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Expected Output (Optional)</label>
+                      <textarea
+                        rows={2}
+                        placeholder="Ground truth answer"
+                        value={dsOutput}
+                        onChange={(e) => setDsOutput(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded-lg transition disabled:opacity-50"
+                    >
+                      {loading && <Spinner />}
+                      {loading ? "Creating..." : "Create Dataset"}
+                    </button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                  <h2 className="text-lg font-semibold mb-4 text-slate-200">Workspace Datasets ({datasets.length})</h2>
+                  {datasets.length === 0 ? (
+                    <div className="text-slate-500 text-center py-12">No datasets created yet.</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {datasets.map((d) => (
+                        <div key={d.id} className="p-4 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center">
+                          <div>
+                            <div className="font-medium text-slate-200">{d.name}</div>
+                            <div className="text-xs text-slate-500">
+                              ID: {d.id} | Version: v{d.version} | Items: {d.items?.length || 0}
+                            </div>
+                          </div>
+                          <span className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded">
+                            Ready
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* In Synthetic mode, also display the Active Datasets list at the bottom for quick overview & selection */}
+            {datasetMode === "synthetic" && (
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-200">
+                      Active Workspace Datasets ({datasets.length})
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      All datasets ready for live multi-model benchmarking experiments.
+                    </p>
+                  </div>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-mono">
+                    {datasets.reduce((acc, d) => acc + (d.items?.length || 0), 0)} total evaluation samples
+                  </span>
+                </div>
+                {datasets.length === 0 ? (
+                  <div className="text-slate-500 text-center py-8 text-sm">
+                    No benchmark datasets exist yet. Use the generator above or switch to manual entry!
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {datasets.map((d) => (
+                      <div
+                        key={d.id}
+                        className={`p-4 bg-slate-950 border rounded-xl transition ${
+                          selectedDataset === d.id
+                            ? "border-indigo-500 ring-1 ring-indigo-500/50"
+                            : "border-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium text-slate-200 text-sm truncate" title={d.name}>
+                            {d.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono shrink-0">
+                            v{d.version}
+                          </span>
+                        </div>
+                        {d.description && (
+                          <p className="text-xs text-slate-400 line-clamp-2 mt-1">
+                            {d.description}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between text-xs text-slate-500 mt-3 pt-2 border-t border-slate-800/80">
+                          <span>{d.items?.length || 0} sample(s)</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDataset(d.id);
+                              showToast(`Selected "${d.name}" for experiments`, "success");
+                            }}
+                            className={`text-xs px-2 py-0.5 rounded transition ${
+                              selectedDataset === d.id
+                                ? "bg-indigo-600/30 text-indigo-300 font-semibold"
+                                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                            }`}
+                          >
+                            {selectedDataset === d.id ? "Selected ✓" : "Select"}
+                          </button>
                         </div>
                       </div>
-                      <span className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded">
-                        Ready
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

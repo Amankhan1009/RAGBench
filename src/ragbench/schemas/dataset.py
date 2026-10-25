@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class DatasetItemCreate(BaseModel):
@@ -11,6 +11,17 @@ class DatasetItemCreate(BaseModel):
     expected_output: Optional[str] = Field(default=None, description="Ground truth answer")
     contexts: List[str] = Field(default_factory=list, description="Ground truth or retrieved context chunks")
     item_metadata: Dict[str, Any] = Field(default_factory=dict, description="Custom metadata tags")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "context" in data and "contexts" not in data:
+                ctx = data["context"]
+                data["contexts"] = ctx if isinstance(ctx, list) else [str(ctx)]
+            if "metadata" in data and "item_metadata" not in data:
+                data["item_metadata"] = data["metadata"]
+        return data
 
 
 class DatasetItemResponse(BaseModel):
@@ -43,3 +54,43 @@ class DatasetResponse(BaseModel):
     items: List[DatasetItemResponse] = []
 
     model_config = {"from_attributes": True}
+
+
+class SyntheticDatasetRequest(BaseModel):
+    raw_text: str = Field(
+        min_length=50,
+        max_length=50000,
+        description="Raw source text, documentation, or FAQ",
+    )
+    num_samples: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Number of synthetic samples to generate",
+    )
+    difficulty: str = Field(
+        default="mixed",
+        description="Difficulty distribution: factual, reasoning, adversarial, or mixed",
+    )
+    provider_name: str = Field(
+        default="groq",
+        description="LLM provider to use for synthesis",
+    )
+    model_name: Optional[str] = Field(default=None, description="Model identifier")
+    api_key: Optional[str] = Field(default=None, description="Optional BYOK API key override")
+
+
+class SyntheticItemPreview(BaseModel):
+    query: str
+    expected_output: str
+    contexts: List[str] = Field(default_factory=list)
+    difficulty: str = "factual"
+    source_snippet: Optional[str] = None
+
+
+class SyntheticDatasetResponse(BaseModel):
+    items: List[SyntheticItemPreview]
+    total_generated: int
+    provider_used: str
+    model_used: str
+    latency_ms: float

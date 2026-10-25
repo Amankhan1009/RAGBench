@@ -152,7 +152,9 @@ export interface DatasetItem {
   query: string;
   expected_output?: string;
   context?: string[];
+  contexts?: string[];
   metadata?: Record<string, unknown>;
+  item_metadata?: Record<string, unknown>;
 }
 
 export interface Dataset {
@@ -230,6 +232,31 @@ export interface ParetoAnalyticsResponse {
   candidate_name?: string | null;
   baseline_name?: string | null;
   trends: TrendPoint[];
+}
+
+export interface SyntheticItemPreview {
+  query: string;
+  expected_output: string;
+  contexts: string[];
+  difficulty: "factual" | "reasoning" | "adversarial" | string;
+  source_snippet?: string;
+}
+
+export interface SyntheticDatasetRequest {
+  raw_text: string;
+  num_samples?: number;
+  difficulty?: "factual" | "reasoning" | "adversarial" | "mixed";
+  provider_name?: string;
+  model_name?: string;
+  api_key?: string;
+}
+
+export interface SyntheticDatasetResponse {
+  items: SyntheticItemPreview[];
+  total_generated: number;
+  provider_used: string;
+  model_used: string;
+  latency_ms: number;
 }
 
 export interface StreamStartEvent {
@@ -341,6 +368,21 @@ export async function createDataset(payload: {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to create dataset");
+  return res.json();
+}
+
+export async function generateSyntheticDataset(
+  payload: SyntheticDatasetRequest
+): Promise<SyntheticDatasetResponse> {
+  const res = await fetch(`${getApiBase()}/datasets/generate-synthetic`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to generate synthetic dataset");
+  }
   return res.json();
 }
 

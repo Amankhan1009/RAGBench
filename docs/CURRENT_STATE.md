@@ -1,11 +1,12 @@
 # RAGBench — Current State
 
-- **Current Status:** Version 2.0 In Progress (Phases 16, 17 & 18 Completed)
+- **Current Status:** Version 2.0 In Progress (Phases 16, 17, 18 & 19 Completed)
 - **Target Status:** Implement Version 2.0 Roadmap ([`docs/V2_ROADMAP.md`](V2_ROADMAP.md))
 - **Completed Components (v2.0):**
   - **Phase 16 (Multi-Tenant Isolation):** Strict workspace-scoped sessions, foreign keys, private datasets/evaluations, delete endpoints, and Render free-tier sleep/wake detector.
   - **Phase 17 (Visual Analytics & Pareto Frontier):** `GET /api/v1/experiments/analytics/pareto` API, 2D Pareto Scatter Plot (Quality vs Latency), 5-Axis Metric Radar (Spider) Chart, and Historical Quality Trendlines.
   - **Phase 18 (Real-Time SSE Streaming):** `POST /api/v1/experiments/stream` SSE endpoint emitting per-sample evaluations, live animated progress bar, rolling ETA ticker, real-time latency/cost meters, and live streaming feed.
+  - **Phase 19 (Synthetic AI Test Dataset Generator):** `POST /api/v1/datasets/generate-synthetic` endpoint with support for BYOK LLMs (Groq, OpenAI, Claude, Gemini) and deterministic mock synthesis; interactive dataset builder UI with text upload, 1-10 sample count slider, difficulty distributions (factual, reasoning, adversarial, mixed), inline editing table, and 1-click dataset creation.
 - **Completed Components (v1.0):**
   - Full hybrid evaluation engine (Deterministic + LLM-as-a-Judge)
   - 100% Model-independent LLM provider abstraction layer (Groq, OpenAI, Anthropic, Google Gemini)
@@ -16,5 +17,5 @@
   - Multi-stage Docker packaging (`Dockerfile` with dynamic port binding)
   - Render blueprint deployment configuration (`render.yaml` on Free Tier)
   - Automated GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`)
-- **Verified Test Suite:** 40+ unit, integration, analytics, streaming, and regression tests passing + clean TypeScript checks.
-- **Next Milestone:** Phase 19 — Synthetic AI Test Dataset Generator
+- **Verified Test Suite:** 45+ unit, integration, analytics, streaming, and regression tests passing + clean TypeScript checks.
+- **Next Milestone:** Phase 20 — Dataset Ingestion (CSV/JSONL) & Executive Reports
