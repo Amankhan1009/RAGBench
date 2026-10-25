@@ -165,6 +165,48 @@ export async function fetchHealth(): Promise<HealthStatus> {
   return res.json();
 }
 
+export async function pingBackend(timeoutMs = 5000): Promise<boolean> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${getApiBase()}/health`, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return res.ok;
+  } catch {
+    clearTimeout(timeoutId);
+    return false;
+  }
+}
+
+export async function wakeUpBackend(
+  onProgress?: (attempt: number, maxAttempts: number) => void
+): Promise<boolean> {
+  const maxAttempts = 25; // 25 attempts * 2.5s = ~65s max
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (onProgress) onProgress(attempt, maxAttempts);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(`${getApiBase()}/health`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        return true;
+      }
+    } catch {
+      clearTimeout(timeoutId);
+      // In flight or instance still spinning up
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+  }
+  return false;
+}
+
 export async function fetchDatasets(): Promise<Dataset[]> {
   const res = await fetch(`${getApiBase()}/datasets`, {
     headers: getAuthHeaders(),

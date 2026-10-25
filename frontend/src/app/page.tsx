@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import {
   fetchHealth,
+  pingBackend,
+  wakeUpBackend,
   fetchDatasets,
   createDataset,
   fetchExperiments,
@@ -63,6 +65,8 @@ export default function Dashboard() {
 
   // Core application state
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "sleeping" | "waking">("checking");
+  const [wakeProgress, setWakeProgress] = useState<{ attempt: number; maxAttempts: number } | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [activeTab, setActiveTab] = useState<"experiments" | "datasets" | "regression" | "api_keys">("experiments");
@@ -139,9 +143,15 @@ export default function Dashboard() {
         setCurrentUser(u);
         if (u) {
           await loadAll();
+          setBackendStatus("online");
+        } else {
+          const isOnline = await pingBackend();
+          setBackendStatus(isOnline ? "online" : "sleeping");
         }
       } catch {
         setCurrentUser(null);
+        const isOnline = await pingBackend();
+        setBackendStatus(isOnline ? "online" : "sleeping");
       } finally {
         setAuthChecking(false);
       }
@@ -149,11 +159,46 @@ export default function Dashboard() {
     init();
   }, []);
 
+  const handleWakeUpBackend = async () => {
+    setBackendStatus("waking");
+    setWakeProgress({ attempt: 1, maxAttempts: 25 });
+    showToast("Waking up Render backend service...", "loading");
+    const success = await wakeUpBackend((attempt, max) => {
+      setWakeProgress({ attempt, maxAttempts: max });
+    });
+    if (success) {
+      setBackendStatus("online");
+      setWakeProgress(null);
+      setAuthError(null);
+      showToast("Backend is online and ready!", "success");
+      if (currentUser) {
+        await loadAll();
+      }
+    } else {
+      setBackendStatus("sleeping");
+      setWakeProgress(null);
+      showToast("Backend wake-up timed out. Please try again.", "error");
+    }
+  };
+
+  const handleCheckBackend = async () => {
+    setBackendStatus("checking");
+    const isOnline = await pingBackend();
+    setBackendStatus(isOnline ? "online" : "sleeping");
+    if (isOnline) {
+      showToast("Backend is online and responsive!", "success");
+      setAuthError(null);
+    } else {
+      showToast("Backend is sleeping or unreachable.", "error");
+    }
+  };
+
   const loadAll = async () => {
     try {
       setErrorMsg(null);
       const h = await fetchHealth();
       setHealth(h);
+      setBackendStatus("online");
       const ds = await fetchDatasets();
       setDatasets(ds);
       if (ds.length > 0 && !selectedDataset) setSelectedDataset(ds[0].id);
@@ -166,7 +211,15 @@ export default function Dashboard() {
       const keys = await fetchApiKeys().catch(() => []);
       setApiKeys(keys);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to connect to backend");
+      const msg = err instanceof Error ? err.message : "Failed to connect to backend";
+      setErrorMsg(msg);
+      if (
+        msg.toLowerCase().includes("failed to fetch") ||
+        msg.toLowerCase().includes("offline") ||
+        msg.toLowerCase().includes("network")
+      ) {
+        setBackendStatus("sleeping");
+      }
     }
   };
 
@@ -184,9 +237,23 @@ export default function Dashboard() {
         showToast("Welcome back!", "success");
       }
       setCurrentUser(resp.user);
+      setBackendStatus("online");
       await loadAll();
     } catch (err: unknown) {
-      setAuthError(err instanceof Error ? err.message : "Authentication failed");
+      const errMsg = err instanceof Error ? err.message : "Authentication failed";
+      if (
+        errMsg.toLowerCase().includes("failed to fetch") ||
+        errMsg.toLowerCase().includes("networkerror") ||
+        errMsg.toLowerCase().includes("network error") ||
+        errMsg.toLowerCase().includes("load failed")
+      ) {
+        setBackendStatus("sleeping");
+        setAuthError(
+          "Failed to fetch: Backend instance is sleeping (Render Free Tier). Click 'Wake Up Backend' below to start the server."
+        );
+      } else {
+        setAuthError(errMsg);
+      }
     } finally {
       setAuthLoading(false);
     }
@@ -378,6 +445,92 @@ export default function Dashboard() {
             </p>
           </div>
 
+          {/* Backend Health & Wake-Up Status Widget */}
+          <div className="rounded-xl p-3 border transition-all duration-300 text-xs flex flex-col gap-2.5 bg-slate-950/70 border-slate-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 font-medium">Backend:</span>
+                {backendStatus === "online" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800/80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Online
+                  </span>
+                )}
+                {backendStatus === "sleeping" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold text-amber-400 bg-amber-950/80 border border-amber-800/80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    Asleep (Render Free Tier)
+                  </span>
+                )}
+                {backendStatus === "checking" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-medium text-slate-300 bg-slate-800">
+                    <Spinner className="w-3 h-3 text-indigo-400" />
+                    Checking...
+                  </span>
+                )}
+                {backendStatus === "waking" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold text-indigo-300 bg-indigo-950/80 border border-indigo-700">
+                    <Spinner className="w-3 h-3 text-indigo-400" />
+                    Waking Up...
+                  </span>
+                )}
+              </div>
+
+              {backendStatus === "online" && (
+                <button
+                  type="button"
+                  onClick={handleCheckBackend}
+                  className="text-[11px] text-slate-400 hover:text-slate-200 hover:underline flex items-center gap-1 transition"
+                  title="Check connection"
+                >
+                  ↻ Check
+                </button>
+              )}
+            </div>
+
+            {/* Sleeping Banner */}
+            {backendStatus === "sleeping" && (
+              <div className="pt-2 border-t border-slate-800/60 flex flex-col gap-2">
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Render spins down inactive instances. Click below to boot the container (~30–50s boot time).
+                </p>
+                <button
+                  type="button"
+                  onClick={handleWakeUpBackend}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500 via-indigo-600 to-indigo-700 hover:from-amber-400 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-indigo-950 transition hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <span>⚡ Wake Up Backend</span>
+                </button>
+              </div>
+            )}
+
+            {/* Waking Progress Bar */}
+            {backendStatus === "waking" && (
+              <div className="pt-2 border-t border-slate-800/60 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[11px] text-indigo-300 font-medium">
+                  <span>Waking up container...</span>
+                  <span>
+                    Attempt {wakeProgress?.attempt ?? 1} / {wakeProgress?.maxAttempts ?? 25}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-indigo-500 h-full transition-all duration-300 rounded-full"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        (((wakeProgress?.attempt ?? 1) / (wakeProgress?.maxAttempts ?? 25)) * 100)
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] text-slate-500">
+                  Render cold start in progress (~30-50s). The page will auto-activate when ready.
+                </span>
+              </div>
+            )}
+          </div>
+
           <div className="flex border border-slate-800 rounded-xl bg-slate-950 p-1">
             <button
               onClick={() => {
@@ -408,8 +561,25 @@ export default function Dashboard() {
           </div>
 
           {authError && (
-            <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-200 rounded-xl text-xs">
-              {authError}
+            <div className="p-3.5 bg-rose-950/70 border border-rose-800 text-rose-200 rounded-xl text-xs space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="text-rose-400 text-sm mt-0.5">⚠️</span>
+                <div className="flex-1 space-y-2">
+                  <p className="font-semibold text-rose-100">{authError}</p>
+                  {(authError.toLowerCase().includes("fetch") ||
+                    authError.toLowerCase().includes("render") ||
+                    backendStatus === "sleeping") &&
+                    backendStatus !== "waking" && (
+                      <button
+                        type="button"
+                        onClick={handleWakeUpBackend}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition shadow-md"
+                      >
+                        <span>⚡ Wake Up Backend Now</span>
+                      </button>
+                    )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -679,7 +849,47 @@ export default function Dashboard() {
         </div>
 
         {/* User Info & Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Backend Status Pill */}
+          <div className="bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl text-xs flex items-center gap-2">
+            {backendStatus === "online" ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-emerald-400 font-medium">Backend Online</span>
+                <button
+                  onClick={handleCheckBackend}
+                  className="text-slate-500 hover:text-slate-300 ml-1"
+                  title="Check connectivity"
+                >
+                  ↻
+                </button>
+              </>
+            ) : backendStatus === "waking" ? (
+              <>
+                <Spinner className="w-3 h-3 text-indigo-400" />
+                <span className="text-indigo-300 font-medium">
+                  Waking... ({wakeProgress?.attempt}/25)
+                </span>
+              </>
+            ) : backendStatus === "checking" ? (
+              <>
+                <Spinner className="w-3 h-3 text-slate-400" />
+                <span className="text-slate-400">Checking backend...</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span className="text-amber-300 font-medium">Backend Sleeping</span>
+                <button
+                  onClick={handleWakeUpBackend}
+                  className="ml-1 text-[11px] px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition"
+                >
+                  ⚡ Wake Up
+                </button>
+              </>
+            )}
+          </div>
+
           <div className="bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-xl text-xs flex items-center gap-2.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span className="font-medium text-slate-200">{currentUser.email}</span>
@@ -697,8 +907,27 @@ export default function Dashboard() {
       </header>
 
       {errorMsg && (
-        <div className="max-w-7xl mx-auto mt-4 p-4 bg-rose-950/60 border border-rose-800 text-rose-200 rounded-lg text-sm">
-          Backend notice: {errorMsg}.
+        <div className="max-w-7xl mx-auto mt-4 p-4 bg-rose-950/60 border border-rose-800 text-rose-200 rounded-lg text-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <span className="font-semibold">Backend Notice:</span> {errorMsg}
+          </div>
+          <div className="flex items-center gap-2">
+            {backendStatus !== "online" && (
+              <button
+                onClick={handleWakeUpBackend}
+                disabled={backendStatus === "waking"}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+              >
+                {backendStatus === "waking" ? "Waking Up..." : "⚡ Wake Up Backend"}
+              </button>
+            )}
+            <button
+              onClick={loadAll}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition"
+            >
+              ↻ Retry
+            </button>
+          </div>
         </div>
       )}
 
