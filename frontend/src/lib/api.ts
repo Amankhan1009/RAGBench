@@ -191,6 +191,46 @@ export interface RegressionReport {
   >;
 }
 
+export interface ParetoPoint {
+  experiment_id: string;
+  name: string;
+  model_name: string;
+  provider_name: string;
+  composite_score: number;
+  latency_ms: number;
+  cost_usd: number;
+  total_tokens: number;
+  metrics: Record<string, number>;
+  is_pareto_optimal: boolean;
+  is_baseline: boolean;
+  created_at: string;
+}
+
+export interface RadarDimension {
+  dimension: string;
+  candidate_score: number;
+  baseline_score: number;
+}
+
+export interface TrendPoint {
+  experiment_id: string;
+  name: string;
+  timestamp: string;
+  composite_score: number;
+  latency_ms: number;
+  is_baseline: boolean;
+}
+
+export interface ParetoAnalyticsResponse {
+  total_experiments: number;
+  points: ParetoPoint[];
+  pareto_frontier: ParetoPoint[];
+  radar_comparison?: RadarDimension[] | null;
+  candidate_name?: string | null;
+  baseline_name?: string | null;
+  trends: TrendPoint[];
+}
+
 export async function fetchHealth(): Promise<HealthStatus> {
   const res = await fetch(`${getApiBase()}/health`, { cache: "no-store" });
   if (!res.ok) throw new Error("Backend offline");
@@ -311,6 +351,19 @@ export async function checkRegression(
     const error = await res.json().catch(() => ({}));
     throw new Error(error.detail || "Failed to check regression");
   }
+  return res.json();
+}
+
+export async function fetchParetoAnalytics(candidateId?: string): Promise<ParetoAnalyticsResponse> {
+  let url = `${getApiBase()}/experiments/analytics/pareto`;
+  if (candidateId) {
+    url += `?candidate_id=${encodeURIComponent(candidateId)}`;
+  }
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch Pareto analytics");
   return res.json();
 }
 

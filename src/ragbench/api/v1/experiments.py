@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from ragbench.api.v1.auth import get_current_workspace
 from ragbench.core.security import decrypt_api_key
 from ragbench.core.tracing import trace_async_run
 from ragbench.db.session import get_db
+from ragbench.evaluators.analytics import calculate_pareto_frontier
 from ragbench.evaluators.deterministic import (
     ExactMatchEvaluator,
     HitRateEvaluator,
@@ -21,6 +22,7 @@ from ragbench.models.dataset import Dataset
 from ragbench.models.experiment import Experiment, ExperimentItem
 from ragbench.models.workspace import Workspace, WorkspaceApiKey
 from ragbench.providers.factory import ProviderFactory
+from ragbench.schemas.analytics import ParetoAnalyticsResponse
 from ragbench.schemas.experiment import (
     ComparisonDelta,
     ExperimentCreate,
@@ -168,6 +170,27 @@ async def list_experiments(
     )
     res = await db.execute(stmt)
     return res.scalars().all()
+
+
+@router.get("/analytics/pareto", response_model=ParetoAnalyticsResponse)
+async def get_pareto_analytics(
+    candidate_id: Optional[uuid.UUID] = Query(default=None, description="Optional candidate experiment ID to compare against baseline"),
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db),
+):
+    """Compute Pareto frontier (Quality vs Latency/Cost), Radar comparison, and historical quality trends for workspace."""
+    stmt = (
+        select(Experiment)
+        .where(
+            Experiment.workspace_id == workspace.id,
+            Experiment.status == "COMPLETED"
+        )
+        .order_by(Experiment.created_at.asc())
+    )
+    res = await db.execute(stmt)
+    experiments = list(res.scalars().all())
+
+    return calculate_pareto_frontier(experiments, candidate_id=candidate_id)
 
 
 @router.get("/{experiment_id}", response_model=ExperimentResponse)

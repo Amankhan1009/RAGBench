@@ -25,7 +25,11 @@ import {
   Dataset,
   Experiment,
   RegressionReport,
+  fetchParetoAnalytics,
+  ParetoPoint,
+  ParetoAnalyticsResponse,
 } from "../lib/api";
+import VisualAnalytics from "../components/VisualAnalytics";
 
 function Spinner({ className = "" }: { className?: string }) {
   return (
@@ -72,7 +76,11 @@ export default function Dashboard() {
   const [wakeProgress, setWakeProgress] = useState<{ attempt: number; maxAttempts: number } | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
-  const [activeTab, setActiveTab] = useState<"experiments" | "datasets" | "regression" | "api_keys">("experiments");
+  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "api_keys">("experiments");
+  const [analyticsData, setAnalyticsData] = useState<ParetoAnalyticsResponse | null>(null);
+  const [selectedCandidateForAnalytics, setSelectedCandidateForAnalytics] = useState<string>("");
+  const [selectedParetoPoint, setSelectedParetoPoint] = useState<ParetoPoint | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -214,6 +222,18 @@ export default function Dashboard() {
       }
       const keys = await fetchApiKeys().catch(() => []);
       setApiKeys(keys);
+
+      const analytics = await fetchParetoAnalytics().catch(() => null);
+      if (analytics) {
+        setAnalyticsData(analytics);
+        if (analytics.points.length > 0) {
+          setSelectedParetoPoint((prev) => {
+            if (!prev) return analytics.pareto_frontier[0] || analytics.points[0];
+            const found = analytics.points.find((p) => p.experiment_id === prev.experiment_id);
+            return found || analytics.pareto_frontier[0] || analytics.points[0];
+          });
+        }
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to connect to backend";
       setErrorMsg(msg);
@@ -224,6 +244,26 @@ export default function Dashboard() {
       ) {
         setBackendStatus("sleeping");
       }
+    }
+  };
+
+  const handleCandidateAnalyticsChange = async (candId: string) => {
+    setSelectedCandidateForAnalytics(candId);
+    setLoadingAnalytics(true);
+    try {
+      const data = await fetchParetoAnalytics(candId || undefined);
+      setAnalyticsData(data);
+      if (data.points.length > 0) {
+        setSelectedParetoPoint((prev) => {
+          if (!prev) return data.pareto_frontier[0] || data.points[0];
+          const found = data.points.find((p) => p.experiment_id === prev.experiment_id);
+          return found || data.pareto_frontier[0] || data.points[0];
+        });
+      }
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to load analytics", "error");
+    } finally {
+      setLoadingAnalytics(false);
     }
   };
 
@@ -993,8 +1033,8 @@ export default function Dashboard() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="max-w-7xl mx-auto mt-8 flex border-b border-slate-800 gap-8">
-        {(["experiments", "regression", "datasets", "api_keys"] as const).map((tab) => (
+      <div className="max-w-7xl mx-auto mt-8 flex flex-wrap border-b border-slate-800 gap-8">
+        {(["experiments", "analytics", "regression", "datasets", "api_keys"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1005,6 +1045,14 @@ export default function Dashboard() {
             }`}
           >
             {tab === "experiments" && "Experiments & Runs"}
+            {tab === "analytics" && (
+              <>
+                <span>Analytics &amp; Pareto Frontier</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+                  v2.0
+                </span>
+              </>
+            )}
             {tab === "regression" && "Regression & CI Gates"}
             {tab === "datasets" && "Datasets"}
             {tab === "api_keys" && (
@@ -1256,7 +1304,22 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* TAB 2: REGRESSION & CI GATES */}
+        {/* TAB 2: VISUAL ANALYTICS & PARETO FRONTIER (v2.0) */}
+        {activeTab === "analytics" && (
+          <VisualAnalytics
+            analyticsData={analyticsData}
+            loading={loadingAnalytics}
+            selectedCandidateId={selectedCandidateForAnalytics}
+            onCandidateChange={handleCandidateAnalyticsChange}
+            selectedPoint={selectedParetoPoint}
+            onSelectPoint={(p) => setSelectedParetoPoint(p)}
+            onRefresh={() => handleCandidateAnalyticsChange(selectedCandidateForAnalytics)}
+            onNavigateToExperiments={() => setActiveTab("experiments")}
+            experiments={experiments}
+          />
+        )}
+
+        {/* TAB 3: REGRESSION & CI GATES */}
         {activeTab === "regression" && (
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-6">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
