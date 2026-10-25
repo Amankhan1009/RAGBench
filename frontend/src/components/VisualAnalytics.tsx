@@ -85,6 +85,58 @@ export default function VisualAnalytics({
   const sortedFrontier = [...pareto_frontier].sort((a, b) => a.latency_ms - b.latency_ms);
   const frontierPolyline = sortedFrontier.map((p) => `${getX(p.latency_ms)},${getY(p.composite_score)}`).join(" ");
 
+  // Handle collision avoidance for overlapping points (e.g. identical latency & score)
+  const pointPositions: { [id: string]: { cx: number; cy: number } } = {};
+  const processed = new Set<string>();
+
+  points.forEach((p) => {
+    if (processed.has(p.experiment_id)) return;
+    const pX = getX(p.latency_ms);
+    const pY = getY(p.composite_score);
+    const cluster = [p];
+    processed.add(p.experiment_id);
+
+    points.forEach((other) => {
+      if (!processed.has(other.experiment_id)) {
+        const oX = getX(other.latency_ms);
+        const oY = getY(other.composite_score);
+        if (Math.hypot(pX - oX, pY - oY) < 14) {
+          cluster.push(other);
+          processed.add(other.experiment_id);
+        }
+      }
+    });
+
+    if (cluster.length === 1) {
+      pointPositions[cluster[0].experiment_id] = { cx: pX, cy: pY };
+    } else {
+      // Offset points horizontally so every model at identical scores is clearly visible and clickable
+      const spread = 20;
+      const startX = -((cluster.length - 1) * spread) / 2;
+      cluster.forEach((item, k) => {
+        pointPositions[item.experiment_id] = {
+          cx: pX + startX + k * spread,
+          cy: pY,
+        };
+      });
+    }
+  });
+
+  // Sort points to guarantee optimal SVG stacking order (Z-index):
+  // 1. Standard runs (bottom)
+  // 2. Candidate Pareto runs (middle)
+  // 3. Active Baseline (top)
+  // 4. Currently Selected point (very top)
+  const sortedPointsToRender = [...points].sort((a, b) => {
+    const getLayer = (pt: ParetoPoint) => {
+      if (selectedPoint?.experiment_id === pt.experiment_id) return 4;
+      if (pt.is_baseline) return 3;
+      if (pt.is_pareto_optimal) return 2;
+      return 1;
+    };
+    return getLayer(a) - getLayer(b);
+  });
+
   // ── RADAR CHART MATH ───────────────────────────────────────────────────────
   const radarSize = 300;
   const rCenter = 150;
@@ -301,15 +353,19 @@ export default function VisualAnalytics({
                 />
               )}
 
-              {/* Scatter Points */}
-              {points.map((p) => {
-                const cx = getX(p.latency_ms);
-                const cy = getY(p.composite_score);
+              {/* Scatter Points (sorted by Z-order, with collision spread for identical metrics) */}
+              {sortedPointsToRender.map((p) => {
+                const pos = pointPositions[p.experiment_id] || {
+                  cx: getX(p.latency_ms),
+                  cy: getY(p.composite_score),
+                };
+                const cx = pos.cx;
+                const cy = pos.cy;
                 const isSelected = selectedPoint?.experiment_id === p.experiment_id;
                 const isHovered = hoveredPointId === p.experiment_id;
 
                 if (p.is_baseline) {
-                  const size = isSelected ? 9.5 : isHovered ? 8.5 : 7;
+                  const size = isSelected ? 10.5 : isHovered ? 9.5 : 8;
                   return (
                     <g
                       key={p.experiment_id}
@@ -318,22 +374,35 @@ export default function VisualAnalytics({
                       onMouseLeave={() => setHoveredPointId(null)}
                       className="cursor-pointer"
                     >
+                      {/* If baseline is also Pareto optimal, render the green halo around the diamond */}
+                      {p.is_pareto_optimal && (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={isSelected ? 18 : isHovered ? 16 : 14}
+                          fill="rgba(16, 185, 129, 0.15)"
+                          stroke="#10b981"
+                          strokeWidth="1.2"
+                          strokeDasharray="3 3"
+                          className="pointer-events-none transition-all duration-200"
+                        />
+                      )}
                       {/* Generous invisible hit target for effortless clicking */}
-                      <circle cx={cx} cy={cy} r="16" fill="transparent" />
+                      <circle cx={cx} cy={cy} r="18" fill="transparent" />
                       <polygon
                         points={`${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}`}
                         fill="#f59e0b"
                         stroke="#ffffff"
-                        strokeWidth={isSelected || isHovered ? "2.5" : "1.5"}
+                        strokeWidth={isSelected || isHovered ? "2.5" : "1.8"}
                         className="transition-all duration-150"
                       />
-                      <title>{`${p.name} (Active Baseline)\nScore: ${p.composite_score.toFixed(4)}\nLatency: ${p.latency_ms.toFixed(1)}ms`}</title>
+                      <title>{`${p.name} (Active Baseline${p.is_pareto_optimal ? " & Pareto Optimal" : ""})\nScore: ${p.composite_score.toFixed(4)}\nLatency: ${p.latency_ms.toFixed(1)}ms`}</title>
                     </g>
                   );
                 }
 
                 if (p.is_pareto_optimal) {
-                  const r = isSelected ? 9 : isHovered ? 8 : 6.5;
+                  const r = isSelected ? 9.5 : isHovered ? 8.5 : 7;
                   return (
                     <g
                       key={p.experiment_id}
@@ -346,7 +415,7 @@ export default function VisualAnalytics({
                       <circle
                         cx={cx}
                         cy={cy}
-                        r={isSelected ? 16 : isHovered ? 14 : 12}
+                        r={isSelected ? 17 : isHovered ? 15 : 13}
                         fill="rgba(16, 185, 129, 0.12)"
                         stroke="#10b981"
                         strokeWidth="1.2"
@@ -360,17 +429,17 @@ export default function VisualAnalytics({
                         r={r}
                         fill="#10b981"
                         stroke="#ffffff"
-                        strokeWidth={isSelected || isHovered ? "2.5" : "1.5"}
+                        strokeWidth={isSelected || isHovered ? "2.5" : "1.8"}
                         className="transition-all duration-150"
                       />
                       {/* Generous invisible hit target */}
-                      <circle cx={cx} cy={cy} r="16" fill="transparent" />
+                      <circle cx={cx} cy={cy} r="18" fill="transparent" />
                       <title>{`${p.name} (Pareto Optimal)\nScore: ${p.composite_score.toFixed(4)}\nLatency: ${p.latency_ms.toFixed(1)}ms`}</title>
                     </g>
                   );
                 }
 
-                const r = isSelected ? 7.5 : isHovered ? 6.5 : 5;
+                const r = isSelected ? 8 : isHovered ? 7 : 5.5;
                 return (
                   <g
                     key={p.experiment_id}
@@ -380,14 +449,14 @@ export default function VisualAnalytics({
                     className="cursor-pointer"
                   >
                     {/* Generous invisible hit target */}
-                    <circle cx={cx} cy={cy} r="14" fill="transparent" />
+                    <circle cx={cx} cy={cy} r="16" fill="transparent" />
                     <circle
                       cx={cx}
                       cy={cy}
                       r={r}
                       fill={isHovered ? "#475569" : "#334155"}
                       stroke={isHovered ? "#ffffff" : "#94a3b8"}
-                      strokeWidth={isSelected || isHovered ? "2" : "1.5"}
+                      strokeWidth={isSelected || isHovered ? "2.2" : "1.5"}
                       className="transition-all duration-150"
                     />
                     <title>{`${p.name}\nScore: ${p.composite_score.toFixed(4)}\nLatency: ${p.latency_ms.toFixed(1)}ms`}</title>
