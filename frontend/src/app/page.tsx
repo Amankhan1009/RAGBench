@@ -11,6 +11,7 @@ import {
   createDataset,
   fetchExperiments,
   runExperiment,
+  streamExperiment,
   setBaseline,
   checkRegression,
   loginUser,
@@ -28,8 +29,12 @@ import {
   fetchParetoAnalytics,
   ParetoPoint,
   ParetoAnalyticsResponse,
+  StreamStartEvent,
+  StreamSampleEvent,
+  StreamCompleteEvent,
 } from "../lib/api";
 import VisualAnalytics from "../components/VisualAnalytics";
+import LiveEvaluationStream from "../components/LiveEvaluationStream";
 
 function Spinner({ className = "" }: { className?: string }) {
   return (
@@ -83,6 +88,13 @@ export default function Dashboard() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Live Streaming (Phase 18 SSE) State
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamStart, setStreamStart] = useState<StreamStartEvent | null>(null);
+  const [streamSamples, setStreamSamples] = useState<StreamSampleEvent[]>([]);
+  const [streamComplete, setStreamComplete] = useState<StreamCompleteEvent | null>(null);
+  const [streamError, setStreamError] = useState<string | null>(null);
 
   // BYOK API Keys State
   const [apiKeys, setApiKeys] = useState<ApiKeyMetadata[]>([]);
@@ -339,6 +351,14 @@ export default function Dashboard() {
     }
   };
 
+  const handleDismissStream = () => {
+    setIsStreaming(false);
+    setStreamStart(null);
+    setStreamSamples([]);
+    setStreamComplete(null);
+    setStreamError(null);
+  };
+
   const handleRunExperiment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDataset) {
@@ -346,26 +366,58 @@ export default function Dashboard() {
       return;
     }
     setLoading(true);
-    showToast("Running evaluation & scoring metrics...", "loading");
+    setIsStreaming(true);
+    setStreamStart(null);
+    setStreamSamples([]);
+    setStreamComplete(null);
+    setStreamError(null);
+    showToast("Launching live evaluation stream...", "loading");
+
     try {
       if (runApiKey.trim() && saveRunKeyToVault && provider !== "mock") {
         await registerApiKey(provider, runApiKey.trim()).catch(() => {});
         const updatedKeys = await fetchApiKeys().catch(() => []);
         setApiKeys(updatedKeys);
       }
-      await runExperiment({
-        name: expName || `Benchmark Run ${experiments.length + 1}`,
-        dataset_id: selectedDataset,
-        provider_name: provider,
-        model_name: model,
-        api_key: runApiKey.trim() || undefined,
-      });
-      setExpName("");
-      setRunApiKey("");
-      await loadAll();
-      showToast("Evaluation run completed successfully!", "success");
+
+      await streamExperiment(
+        {
+          name: expName || `Benchmark Run ${experiments.length + 1}`,
+          dataset_id: selectedDataset,
+          provider_name: provider,
+          model_name: model,
+          api_key: runApiKey.trim() || undefined,
+        },
+        {
+          onStart: (data) => {
+            setStreamStart(data);
+          },
+          onSample: (data) => {
+            setStreamSamples((prev) => [...prev, data]);
+          },
+          onComplete: async (data) => {
+            setStreamComplete(data);
+            setIsStreaming(false);
+            setExpName("");
+            setRunApiKey("");
+            await loadAll();
+            showToast(
+              `Evaluation completed! Composite Score: ${data.composite_score.toFixed(4)}`,
+              "success"
+            );
+          },
+          onError: (errMsg) => {
+            setStreamError(errMsg);
+            setIsStreaming(false);
+            showToast(errMsg, "error");
+          },
+        }
+      );
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : "Run failed", "error");
+      const msg = err instanceof Error ? err.message : "Run failed";
+      setStreamError(msg);
+      setIsStreaming(false);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -1072,7 +1124,20 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto mt-8">
         {/* TAB 1: EXPERIMENTS */}
         {activeTab === "experiments" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="space-y-8">
+            {(isStreaming || streamComplete || streamError || streamSamples.length > 0) && (
+              <LiveEvaluationStream
+                startData={streamStart}
+                samples={streamSamples}
+                completeData={streamComplete}
+                error={streamError}
+                isStreaming={isStreaming}
+                onDismiss={handleDismissStream}
+                onViewAnalytics={() => setActiveTab("analytics")}
+              />
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-fit">
               <h2 className="text-lg font-semibold mb-4 text-slate-200">Run New Evaluation</h2>
               <form onSubmit={handleRunExperiment} className="space-y-4 text-sm">
@@ -1194,11 +1259,15 @@ export default function Dashboard() {
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || isStreaming}
                   className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded-lg transition disabled:opacity-50 mt-2"
                 >
-                  {loading && <Spinner />}
-                  {loading ? "Running Evaluation..." : "Execute Experiment"}
+                  {(loading || isStreaming) && <Spinner />}
+                  {isStreaming
+                    ? "Streaming Evaluation..."
+                    : loading
+                    ? "Executing..."
+                    : "Execute Experiment"}
                 </button>
               </form>
             </div>
@@ -1302,7 +1371,8 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {/* TAB 2: VISUAL ANALYTICS & PARETO FRONTIER (v2.0) */}
         {activeTab === "analytics" && (

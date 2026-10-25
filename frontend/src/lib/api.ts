@@ -231,6 +231,47 @@ export interface ParetoAnalyticsResponse {
   trends: TrendPoint[];
 }
 
+export interface StreamStartEvent {
+  experiment_id: string;
+  experiment_name: string;
+  total_samples: number;
+  provider_name: string;
+  model_name: string;
+  dataset_name?: string;
+}
+
+export interface StreamSampleEvent {
+  sample_index: number;
+  total_samples: number;
+  query: string;
+  response_snippet: string;
+  latency_ms: number;
+  total_tokens: number;
+  cost_usd: number;
+  metrics: Record<string, number>;
+  passed: boolean;
+  progress_pct: number;
+}
+
+export interface StreamCompleteEvent {
+  experiment_id: string;
+  experiment_name: string;
+  total_samples: number;
+  successful_samples: number;
+  failed_samples: number;
+  composite_score: number;
+  avg_latency_ms: number;
+  avg_tokens: number;
+  total_cost_usd: number;
+  status: string;
+}
+
+export interface StreamErrorEvent {
+  error_message: string;
+  sample_index?: number;
+  experiment_id?: string;
+}
+
 export async function fetchHealth(): Promise<HealthStatus> {
   const res = await fetch(`${getApiBase()}/health`, { cache: "no-store" });
   if (!res.ok) throw new Error("Backend offline");
@@ -325,6 +366,80 @@ export async function runExperiment(payload: {
   });
   if (!res.ok) throw new Error("Failed to run experiment");
   return res.json();
+}
+
+export async function streamExperiment(
+  payload: {
+    name: string;
+    dataset_id: string;
+    provider_name: string;
+    model_name?: string;
+    api_key?: string;
+  },
+  callbacks: {
+    onStart?: (data: StreamStartEvent) => void;
+    onSample?: (data: StreamSampleEvent) => void;
+    onComplete?: (data: StreamCompleteEvent) => void;
+    onError?: (error: string) => void;
+  },
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(`${getApiBase()}/experiments/stream`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!res.ok) {
+    let errDetail = "Failed to start streaming evaluation";
+    try {
+      const errJson = await res.json();
+      errDetail = errJson.detail || errDetail;
+    } catch {
+      errDetail = await res.text();
+    }
+    throw new Error(errDetail);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("ReadableStream not supported by browser");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n\n");
+    buffer = lines.pop() || "";
+
+    for (const block of lines) {
+      if (!block.trim()) continue;
+      const eventMatch = block.match(/^event:\s*(\w+)/m);
+      const dataMatch = block.match(/^data:\s*(.+)$/m);
+
+      if (eventMatch && dataMatch) {
+        const eventType = eventMatch[1];
+        try {
+          const parsed = JSON.parse(dataMatch[1]);
+          if (eventType === "started" && callbacks.onStart) {
+            callbacks.onStart(parsed);
+          } else if (eventType === "sample_completed" && callbacks.onSample) {
+            callbacks.onSample(parsed);
+          } else if (eventType === "completed" && callbacks.onComplete) {
+            callbacks.onComplete(parsed);
+          } else if (eventType === "error" && callbacks.onError) {
+            callbacks.onError(parsed.error_message || "Unknown streaming error");
+          }
+        } catch (e) {
+          console.error("Error parsing SSE event data:", e, block);
+        }
+      }
+    }
+  }
 }
 
 export async function setBaseline(experimentId: string): Promise<Experiment> {

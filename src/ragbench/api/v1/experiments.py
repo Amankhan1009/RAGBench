@@ -3,13 +3,14 @@ import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ragbench.api.v1.auth import get_current_workspace
 from ragbench.core.security import decrypt_api_key
 from ragbench.core.tracing import trace_async_run
-from ragbench.db.session import get_db
+from ragbench.db.session import get_db, get_session_factory
 from ragbench.evaluators.analytics import calculate_pareto_frontier
 from ragbench.evaluators.deterministic import (
     ExactMatchEvaluator,
@@ -27,6 +28,12 @@ from ragbench.schemas.experiment import (
     ComparisonDelta,
     ExperimentCreate,
     ExperimentResponse,
+)
+from ragbench.schemas.streaming import (
+    StreamCompleteData,
+    StreamErrorData,
+    StreamSampleData,
+    StreamStartData,
 )
 
 router = APIRouter(prefix="/experiments", tags=["Experiments"])
@@ -155,6 +162,266 @@ async def create_experiment(
     await db.commit()
     await db.refresh(experiment)
     return experiment
+
+
+@router.post("/stream")
+async def create_experiment_stream(
+    payload: ExperimentCreate,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db),
+):
+    """Launch an evaluation experiment and stream real-time progress events (SSE) per sample."""
+    stmt = select(Dataset).where(
+        Dataset.id == payload.dataset_id,
+        Dataset.workspace_id == workspace.id,
+    )
+    dataset = (await db.execute(stmt)).scalar_one_or_none()
+    if not dataset:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dataset '{payload.dataset_id}' not found in active workspace.",
+        )
+    if not dataset.items:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot run evaluation on an empty dataset. Please add dataset items first.",
+        )
+
+    effective_key = payload.api_key
+    if not effective_key or (effective_key == "mock-key" and payload.provider_name.lower() != "mock"):
+        if payload.provider_name.lower() == "mock":
+            effective_key = "mock-key"
+        else:
+            key_stmt = select(WorkspaceApiKey).where(
+                WorkspaceApiKey.workspace_id == workspace.id,
+                WorkspaceApiKey.provider == payload.provider_name.lower(),
+            )
+            key_record = (await db.execute(key_stmt)).scalar_one_or_none()
+            if key_record:
+                try:
+                    effective_key = decrypt_api_key(key_record.encrypted_key)
+                except Exception:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Failed to decrypt stored provider API key. Please re-register your key in the BYOK tab.",
+                    )
+            else:
+                env_fallback = os.getenv(f"{payload.provider_name.upper()}_API_KEY")
+                if env_fallback:
+                    effective_key = env_fallback
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"No API key configured for provider '{payload.provider_name}'. Please add your API key in the 'API Keys (BYOK)' tab or pass it directly.",
+                    )
+
+    try:
+        provider = ProviderFactory.create(payload.provider_name, api_key=effective_key, model=payload.model_name)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to instantiate provider: {str(exc)}")
+
+    engine = EvaluationEngine([ExactMatchEvaluator(), HitRateEvaluator(), LatencyTokenEvaluator()])
+
+    dataset_items_data = [
+        {
+            "id": item.id,
+            "query": item.query,
+            "expected_output": item.expected_output,
+            "contexts": item.contexts or [],
+        }
+        for item in dataset.items
+    ]
+    total_samples = len(dataset_items_data)
+
+    async def event_generator():
+        factory = get_session_factory()
+        async with factory() as stream_db:
+            try:
+                experiment = Experiment(
+                    name=payload.name,
+                    description=payload.description,
+                    dataset_id=payload.dataset_id,
+                    workspace_id=workspace.id,
+                    provider_name=payload.provider_name,
+                    model_name=payload.model_name,
+                    status="RUNNING",
+                )
+                stream_db.add(experiment)
+                await stream_db.flush()
+
+                start_event = StreamStartData(
+                    experiment_id=experiment.id,
+                    experiment_name=experiment.name,
+                    total_samples=total_samples,
+                    provider_name=payload.provider_name,
+                    model_name=payload.model_name,
+                    dataset_name=dataset.name,
+                )
+                yield f"event: started\ndata: {start_event.model_dump_json()}\n\n"
+
+                total_latency = 0.0
+                total_cost = 0.0
+                total_tokens = 0
+                successful_samples = 0
+                failed_samples = 0
+                quality_scores = []
+
+                for idx, ds_item in enumerate(dataset_items_data, start=1):
+                    try:
+                        async with trace_async_run(
+                            name=f"{payload.provider_name.capitalize()} - {payload.model_name or 'default'}",
+                            run_type="llm",
+                            inputs={"query": ds_item["query"], "dataset_id": str(payload.dataset_id)},
+                            metadata={
+                                "experiment_name": payload.name,
+                                "provider": payload.provider_name,
+                                "model": payload.model_name or "default",
+                                "dataset_item_id": str(ds_item["id"]),
+                                "workspace": workspace.name,
+                            },
+                        ) as trace_outputs:
+                            gen_res = await provider.generate(ds_item["query"])
+                            eval_dict = engine.evaluate_sample(
+                                query=ds_item["query"],
+                                response=gen_res.generated_text,
+                                expected_output=ds_item["expected_output"],
+                                retrieved_contexts=ds_item["contexts"],
+                                ground_truth_contexts=ds_item["contexts"],
+                                latency_ms=gen_res.latency_ms,
+                                total_tokens=gen_res.total_tokens,
+                            )
+                            metrics_payload = {
+                                k: {"score": v.score, "passed": v.passed, "reason": v.reason}
+                                for k, v in eval_dict.items()
+                            }
+
+                            trace_outputs["output"] = gen_res.generated_text
+                            trace_outputs["metrics"] = {k: v["score"] for k, v in metrics_payload.items()}
+                            trace_outputs["latency_ms"] = gen_res.latency_ms
+                            trace_outputs["total_tokens"] = gen_res.total_tokens
+                            trace_outputs["cost_usd"] = gen_res.cost_usd
+
+                            exp_item = ExperimentItem(
+                                experiment_id=experiment.id,
+                                dataset_item_id=ds_item["id"],
+                                query=ds_item["query"],
+                                response=gen_res.generated_text,
+                                expected_output=ds_item["expected_output"],
+                                metrics=metrics_payload,
+                                latency_ms=gen_res.latency_ms,
+                                total_tokens=gen_res.total_tokens,
+                                cost_usd=gen_res.cost_usd,
+                                status="SUCCESS",
+                            )
+
+                            total_latency += gen_res.latency_ms
+                            total_cost += gen_res.cost_usd
+                            total_tokens += gen_res.total_tokens
+                            successful_samples += 1
+
+                            sample_quality = [
+                                v.score
+                                for k, v in eval_dict.items()
+                                if "latency" not in k.lower()
+                                and "token" not in k.lower()
+                                and "cost" not in k.lower()
+                            ]
+                            if sample_quality:
+                                quality_scores.append(sum(sample_quality) / len(sample_quality))
+
+                            passed = all(v.passed for v in eval_dict.values())
+                            snippet = (
+                                gen_res.generated_text[:140] + "..."
+                                if len(gen_res.generated_text) > 140
+                                else gen_res.generated_text
+                            )
+
+                            sample_event = StreamSampleData(
+                                sample_index=idx,
+                                total_samples=total_samples,
+                                query=ds_item["query"],
+                                response_snippet=snippet,
+                                latency_ms=round(gen_res.latency_ms, 2),
+                                total_tokens=gen_res.total_tokens,
+                                cost_usd=round(gen_res.cost_usd, 6),
+                                metrics={k: v.score for k, v in eval_dict.items()},
+                                passed=passed,
+                                progress_pct=round((idx / total_samples) * 100.0, 1),
+                            )
+                            yield f"event: sample_completed\ndata: {sample_event.model_dump_json()}\n\n"
+
+                    except Exception as item_err:
+                        failed_samples += 1
+                        exp_item = ExperimentItem(
+                            experiment_id=experiment.id,
+                            dataset_item_id=ds_item["id"],
+                            query=ds_item["query"],
+                            response="",
+                            expected_output=ds_item["expected_output"],
+                            metrics={},
+                            status="FAILED",
+                            error_message=str(item_err),
+                        )
+                        err_event = StreamErrorData(
+                            error_message=str(item_err),
+                            sample_index=idx,
+                            experiment_id=experiment.id,
+                        )
+                        yield f"event: error\ndata: {err_event.model_dump_json()}\n\n"
+
+                    stream_db.add(exp_item)
+                    await stream_db.flush()
+
+                experiment.status = "COMPLETED"
+                await stream_db.commit()
+
+                composite_avg = (
+                    round(sum(quality_scores) / len(quality_scores), 4)
+                    if quality_scores
+                    else 0.0
+                )
+                avg_latency = (
+                    round(total_latency / successful_samples, 2)
+                    if successful_samples
+                    else 0.0
+                )
+                avg_tokens = (
+                    int(total_tokens / successful_samples)
+                    if successful_samples
+                    else 0
+                )
+
+                complete_event = StreamCompleteData(
+                    experiment_id=experiment.id,
+                    experiment_name=experiment.name,
+                    total_samples=total_samples,
+                    successful_samples=successful_samples,
+                    failed_samples=failed_samples,
+                    composite_score=composite_avg,
+                    avg_latency_ms=avg_latency,
+                    avg_tokens=avg_tokens,
+                    total_cost_usd=round(total_cost, 6),
+                    status="SUCCESS",
+                )
+                yield f"event: completed\ndata: {complete_event.model_dump_json()}\n\n"
+
+            except Exception as stream_err:
+                await stream_db.rollback()
+                err_event = StreamErrorData(
+                    error_message=f"Stream execution failed: {str(stream_err)}"
+                )
+                yield f"event: error\ndata: {err_event.model_dump_json()}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("", response_model=List[ExperimentResponse])
