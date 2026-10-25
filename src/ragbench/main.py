@@ -1,8 +1,9 @@
 """FastAPI application entrypoint using modern lifespan handlers."""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 import ragbench.models
 from ragbench.api.v1.agent import router as agent_router
@@ -53,6 +54,13 @@ def _migrate_schema_sync(connection):
             connection.execute(text("ALTER TABLE experiments ADD COLUMN workspace_id VARCHAR(36) DEFAULT 'default-workspace-id'"))
             connection.execute(text("UPDATE experiments SET workspace_id = 'default-workspace-id' WHERE workspace_id IS NULL"))
 
+    # 4. Remove unique constraint on workspaces.name to allow multiple users to have customized names
+    if "workspaces" in inspector.get_table_names() and connection.dialect.name != "sqlite":
+        try:
+            connection.execute(text("ALTER TABLE workspaces DROP CONSTRAINT IF EXISTS workspaces_name_key"))
+        except Exception as exc:
+            logger.warning(f"[Migration] Drop workspaces_name_key: {exc}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -80,6 +88,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled server error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Methods": "*",
+        },
+    )
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")

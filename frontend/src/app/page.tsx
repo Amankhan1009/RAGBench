@@ -250,10 +250,18 @@ export default function Dashboard() {
         errMsg.toLowerCase().includes("network error") ||
         errMsg.toLowerCase().includes("load failed")
       ) {
-        setBackendStatus("sleeping");
-        setAuthError(
-          "Failed to fetch: Backend instance is sleeping (Render Free Tier). Click 'Wake Up Backend' below to start the server."
-        );
+        const isOnline = await pingBackend();
+        if (!isOnline) {
+          setBackendStatus("sleeping");
+          setAuthError(
+            "Failed to fetch: Backend instance is sleeping (Render Free Tier). Click 'Wake Up Backend' below to start the server."
+          );
+        } else {
+          setBackendStatus("online");
+          setAuthError(
+            `Unable to complete ${authMode === "register" ? "registration" : "login"}: ${errMsg}. If you already created an account, please switch to 'Sign In'.`
+          );
+        }
       } else {
         setAuthError(errMsg);
       }
