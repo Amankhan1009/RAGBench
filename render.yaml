@@ -38,4 +38,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_URL
-        sync: false
+        value: https://ragbench-backend.onrender.com/api/v1

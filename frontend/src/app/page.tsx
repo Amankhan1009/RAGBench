@@ -5,6 +5,8 @@ import {
   fetchHealth,
   pingBackend,
   wakeUpBackend,
+  getApiBase,
+  setCustomApiUrl,
   fetchDatasets,
   createDataset,
   fetchExperiments,
@@ -162,6 +164,7 @@ export default function Dashboard() {
   const handleWakeUpBackend = async () => {
     setBackendStatus("waking");
     setWakeProgress({ attempt: 1, maxAttempts: 25 });
+    setAuthError(null);
     showToast("Waking up Render backend service...", "loading");
     const success = await wakeUpBackend((attempt, max) => {
       setWakeProgress({ attempt, maxAttempts: max });
@@ -529,6 +532,27 @@ export default function Dashboard() {
                 </span>
               </div>
             )}
+
+            {/* Active API URL info & config */}
+            <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-slate-500">
+              <span className="truncate max-w-[280px]" title={typeof window !== "undefined" ? getApiBase() : ""}>
+                API: {typeof window !== "undefined" ? getApiBase() : "https://ragbench-backend.onrender.com/api/v1"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const current = getApiBase();
+                  const updated = prompt("Enter Backend API Base URL:", current);
+                  if (updated !== null) {
+                    setCustomApiUrl(updated);
+                    handleCheckBackend();
+                  }
+                }}
+                className="text-indigo-400 hover:text-indigo-300 underline ml-2 whitespace-nowrap"
+              >
+                Config
+              </button>
+            </div>
           </div>
 
           <div className="flex border border-slate-800 rounded-xl bg-slate-950 p-1">

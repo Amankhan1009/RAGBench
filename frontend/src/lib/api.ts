@@ -1,5 +1,13 @@
+export const DEFAULT_PROD_API = "https://ragbench-backend.onrender.com/api/v1";
+export const DEFAULT_LOCAL_API = "http://localhost:8000/api/v1";
+
 export function cleanApiBase(url?: string): string {
-  if (!url) return "http://localhost:8000/api/v1";
+  if (!url) {
+    if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      return DEFAULT_PROD_API;
+    }
+    return DEFAULT_LOCAL_API;
+  }
   let clean = url.trim().replace(/\/+$/, "");
   if (!clean.endsWith("/api/v1")) {
     clean = `${clean}/api/v1`;
@@ -9,10 +17,34 @@ export function cleanApiBase(url?: string): string {
 
 export function getApiBase(): string {
   if (typeof window !== "undefined") {
+    const isRemote = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
     const custom = localStorage.getItem("ragbench_api_url");
-    if (custom) return cleanApiBase(custom);
+    if (custom) {
+      if (isRemote && (custom.includes("localhost") || custom.includes("127.0.0.1"))) {
+        localStorage.removeItem("ragbench_api_url");
+      } else {
+        return cleanApiBase(custom);
+      }
+    }
+
+    if (isRemote) {
+      const envUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
+        return DEFAULT_PROD_API;
+      }
+    }
   }
   return cleanApiBase(process.env.NEXT_PUBLIC_API_URL);
+}
+
+export function setCustomApiUrl(url: string) {
+  if (typeof window !== "undefined") {
+    if (!url.trim()) {
+      localStorage.removeItem("ragbench_api_url");
+    } else {
+      localStorage.setItem("ragbench_api_url", cleanApiBase(url));
+    }
+  }
 }
 
 
