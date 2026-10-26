@@ -29,6 +29,9 @@ wheels/
 .coverage
 htmlcov/
 .ruff_cache/
+*.db
+*.sqlite
+*.sqlite3
 
 # Environment & Secrets
 .env
