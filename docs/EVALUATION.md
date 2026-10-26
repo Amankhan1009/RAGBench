@@ -80,3 +80,64 @@ $$\text{Pareto}(P) \iff \nexists Q \in \text{Workspace} : Q \succ P$$
 | **Exact Match** | 0.0 match | 0.0 match | `0.000` | `0.000` | `+0.000` | Exact string gate score |
 | **Latency Efficiency** | 1035.1 ms | 0.0 ms | `0.482` | `1.000` | `-0.518` | $1.0 - (1035.1 / 2000)$ |
 | **Cost Efficiency** | \$0.00028 USD | \$0.00001 USD | `0.944` | `0.998` | `-0.054` | $1.0 - (0.00028 / 0.005)$ |
+
+---
+
+## 5. Agent Trajectory & Loop Inspector Mathematical Specification
+
+Located in `src/ragbench/evaluators/agent/trajectory.py` and exposed via `/api/v1/agent/evaluate-trajectory`.
+
+### 5.1 Comprehensive Pass / Fail Gate Formula
+An autonomous agent trajectory is granted an **Approved (PASS)** verdict if and only if all three diagnostic conditions are satisfied:
+
+$$\text{Verdict} = \text{PASS} \iff (\neg \text{loop\_detected}) \land (\text{Tool Recall} \ge 0.80) \land (\text{Efficiency Score} \ge 0.50)$$
+
+If an infinite loop occurs, or if mandatory security tools are skipped ($\text{Recall} < 0.80$), or if the agent wanders taking $\ge 6$ excess steps ($\text{Efficiency} < 0.50$), the verdict is strictly **`BLOCKED (FAILED)`**.
+
+---
+
+### 5.2 Infinite Tool Call Loop & Redundancy Detection
+To prevent agents from burning LLM tokens in repetitive failure cycles, RAGBench computes an exact signature for each tool call:
+
+$$\text{sig}(t) = \left( t.\text{name}, \text{canonical\_json}(t.\text{arguments}) \right)$$
+
+1. **Consecutive Invocation Rule:**
+   $$\text{loop}_{\text{consecutive}} \iff \exists i \in [1, N-1] : \text{sig}(t_i) = \text{sig}(t_{i+1})$$
+
+2. **Frequency Threshold Rule:**
+   $$\text{loop}_{\text{frequency}} \iff \max_{s \in \text{Signatures}} \text{count}(s) \ge \text{loop\_threshold} \quad (\text{default} = 2)$$
+
+$$\text{loop\_detected} = \text{loop}_{\text{consecutive}} \lor \text{loop}_{\text{frequency}}$$
+
+Redundant invocations are tracked per step:
+$$\text{Redundant Count} = \sum_{s \in \text{Signatures}} \max(0, \text{count}(s) - 1)$$
+
+---
+
+### 5.3 Tool Precision, Recall & Selection Accuracy
+When a set of required or expected tools $\mathcal{T}_{\text{expected}}$ is defined (such as authentication, KYC, or specific API lookups):
+
+1. **Tool Coverage (Recall):**
+   $$\text{Tool Recall} = \begin{cases} 1.0 & \text{if } |\mathcal{T}_{\text{expected}}| = 0 \\ \frac{|\mathcal{T}_{\text{invoked}} \cap \mathcal{T}_{\text{expected}}|}{|\mathcal{T}_{\text{expected}}|} & \text{otherwise} \end{cases}$$
+   *If $\text{Tool Recall} < 0.80$, the agent fails due to missing critical security or workflow tools.*
+
+2. **Tool Specificity (Precision):**
+   $$\text{Tool Precision} = \begin{cases} 1.0 & \text{if } |\mathcal{T}_{\text{invoked}}| = 0 \\ \frac{|\mathcal{T}_{\text{invoked}} \cap \mathcal{T}_{\text{expected}}|}{|\mathcal{T}_{\text{invoked}}|} & \text{otherwise} \end{cases}$$
+
+3. **Tool Selection Accuracy:**
+   The proportion of actual step executions that invoked an expected benchmark tool:
+   $$\text{Accuracy} = \frac{1}{N} \sum_{i=1}^{N} \mathbb{I}(t_i.\text{name} \in \mathcal{T}_{\text{expected}})$$
+
+---
+
+### 5.4 Path Efficiency & Wandering Penalization
+Measures whether the agent solved the user goal along an optimal path or wasted execution latency wandering through irrelevant queries:
+
+$$\text{Step Penalty} = \max\left(0, N_{\text{actual}} - M_{\text{optimal}}\right) \times 0.10$$
+
+$$\text{Path Efficiency Score} = \max\left(0.0, \operatorname{round}\left(1.0 - \text{Step Penalty}, 2\right)\right)$$
+
+* **Optimal:** $N_{\text{actual}} \le M_{\text{optimal}} \implies \text{Score} = 1.00$
+* **Sub-optimal:** $N_{\text{actual}} = M_{\text{optimal}} + 4 \implies \text{Score} = 0.60$ (Sub-optimal, yellow warning)
+* **Critical Inefficiency (FAIL):** $N_{\text{actual}} \ge M_{\text{optimal}} + 6 \implies \text{Score} \le 0.40 < 0.50 \implies \mathbf{BLOCKED}$
+

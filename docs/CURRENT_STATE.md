@@ -19,5 +19,5 @@
   - Multi-stage Docker packaging (`Dockerfile` with dynamic port binding)
   - Render blueprint deployment configuration (`render.yaml` on Free Tier)
   - Automated GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`)
-- **Verified Test Suite:** 55+ unit, integration, analytics, streaming, ingestion, and agent trajectory tests passing + clean TypeScript checks.
+- **Verified Test Suite:** 60+ unit, integration, analytics, streaming, ingestion, and agent trajectory tests passing + clean TypeScript checks. Complete mathematical specifications documented in [`docs/EVALUATION.md`](EVALUATION.md).
 - **Next Milestone:** Milestone v3.0 — Enterprise AI Security, Guardrails & LLM Gateway ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
