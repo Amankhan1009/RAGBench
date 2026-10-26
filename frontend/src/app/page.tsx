@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   fetchHealth,
   pingBackend,
@@ -119,12 +119,12 @@ export default function Dashboard() {
     type: "loading" | "success" | "error";
   } | null>(null);
 
-  const showToast = (message: string, type: "loading" | "success" | "error") => {
+  const showToast = useCallback((message: string, type: "loading" | "success" | "error") => {
     setStatusToast({ message, type });
     if (type !== "loading") {
       setTimeout(() => setStatusToast(null), 3000);
     }
-  };
+  }, []);
 
   // CI Evaluation Modal State
   const [ciModal, setCiModal] = useState<{

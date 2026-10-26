@@ -170,7 +170,8 @@ export default function AgentTrajectoryInspector({
     return () => {
       isMounted = false;
     };
-  }, [showToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadScenario = (s: AgentScenarioPreset) => {
     setSelectedScenarioId(s.id);
@@ -253,7 +254,28 @@ export default function AgentTrajectoryInspector({
   const handleLoadTemplate = (templateKey: "pass" | "loop" | "security") => {
     const tmpl = CUSTOM_TEMPLATES[templateKey];
     setCustomJson(tmpl.json);
-    showToast(`Loaded ${tmpl.name} template`, "success");
+    try {
+      const parsed = JSON.parse(tmpl.json);
+      const traj: AgentTrajectory = {
+        goal: String(parsed.goal),
+        steps: parsed.steps,
+        final_response: parsed.final_response || "",
+        success: parsed.success !== false,
+      };
+      const tools = Array.isArray(parsed.expected_tools) ? parsed.expected_tools : [];
+      const maxSteps = typeof parsed.max_optimal_steps === "number" ? parsed.max_optimal_steps : 2;
+      const loopThresh = typeof parsed.loop_threshold === "number" ? parsed.loop_threshold : 2;
+
+      setTrajectory(traj);
+      setExpectedTools(tools);
+      setMaxOptimalSteps(maxSteps);
+      setLoopThreshold(loopThresh);
+
+      runEvaluation(traj, tools, maxSteps, loopThresh);
+      showToast(`Loaded & evaluated ${tmpl.name}`, "success");
+    } catch {
+      showToast(`Loaded ${tmpl.name} template`, "success");
+    }
   };
 
   return (
