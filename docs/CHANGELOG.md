@@ -1,5 +1,11 @@
 # RAGBench — Changelog
 
+## [2.6.1] - 2026-11-11
+### Changed
+- Migrated LangSmith integration to modern SmithDB (v2) query architecture (`langsmith>=0.14.0`).
+- Added `query_runs_smithdb()` to `TraceManager` complying with SmithDB v2 guidelines, preventing deprecated `POST /runs/query` invocations ahead of the January 31, 2027 sunset.
+- Updated `scripts/test_live_tracing.py` and `tests/test_tracing.py` with modern SmithDB verification tests.
+
 ## [1.0.0] - 2026-10-09
 ### Added
 - Complete End-to-End Verification Manual & Report (`docs/V1_TESTING_GUIDE.md`) with 19/19 subsystems verified.

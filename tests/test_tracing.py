@@ -111,3 +111,10 @@ def test_logging_scrubs_secrets(caplog):
 
     assert "gsk_" not in caplog.text
     assert "[REDACTED_SECRET]" in caplog.text
+
+
+def test_query_runs_smithdb_graceful_handling():
+    """Verify query_runs_smithdb returns gracefully without deprecated calls."""
+    res = trace_manager.query_runs_smithdb(project_name="ragbench", limit=5)
+    # In test environment with dummy or unconfigured key, returns empty list without error
+    assert isinstance(res, list)

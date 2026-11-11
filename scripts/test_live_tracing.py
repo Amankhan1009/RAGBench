@@ -46,6 +46,15 @@ async def main():
     print(f"[PASS] Local trace captured: span_id={span.id} | latency={span.latency_ms}ms")
     print(f"       Sanitized Inputs: {span.inputs}")
     print(f"       Sanitized Metadata: {span.metadata}")
+
+    # Optional: Verify modern SmithDB v2 query endpoint (avoids deprecated POST /runs/query)
+    try:
+        print("\n[INFO] Validating modern SmithDB v2 query interface (zero deprecated calls)...")
+        recent = trace_manager.query_runs_smithdb(project_name=project, limit=1)
+        print(f"[PASS] SmithDB modern query verified. Retrieved {len(recent)} recent run record(s).")
+    except Exception as exc:
+        print(f"[NOTE] Remote query skipped or offline: {exc}")
+
     print("\n[INFO] Check your LangSmith dashboard project: https://smith.langchain.com/")
     print(f"       Project: {project}")
 

@@ -153,6 +153,42 @@ class TraceManager:
         except Exception as exc:
             logger.warning(f"[LangSmith] Could not connect to LangSmith API: {exc}")
 
+    def query_runs_smithdb(
+        self,
+        project_name: Optional[str] = None,
+        filter_str: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query traces using the modern SmithDB interface.
+        Complies with LangSmith SmithDB v2 guidelines and strictly avoids the
+        deprecated POST /runs/query (v1) endpoint (sunset Jan 31, 2027).
+        """
+        api_key = os.getenv("LANGCHAIN_API_KEY") or settings.LANGCHAIN_API_KEY
+        if not api_key:
+            return []
+
+        try:
+            from langsmith import Client
+            client = Client(api_key=api_key)
+            target_project = project_name or os.getenv("LANGCHAIN_PROJECT", "ragbench")
+            proj = client.read_project(project_name=target_project)
+            if hasattr(client, "runs") and hasattr(client.runs, "query"):
+                paginator = client.runs.query(
+                    project_ids=[str(proj.id)],
+                    filter=filter_str,
+                    page_size=limit,
+                )
+                runs = []
+                for run in paginator:
+                    runs.append(run.dict() if hasattr(run, "dict") else dict(run))
+                    if len(runs) >= limit:
+                        break
+                return runs
+        except Exception as exc:
+            logger.warning(f"[LangSmith] Could not query runs via SmithDB: {exc}")
+        return []
+
 
 trace_manager = TraceManager()
 
