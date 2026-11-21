@@ -1,10 +1,11 @@
 # RAGBench — Current State
 
-- **Current Status:** Version 3.0 IN PROGRESS (Phases 22 & 23 Completed; Phases 1-21 Production Verified)
+- **Current Status:** Version 3.0 IN PROGRESS (Phases 22, 23 & 24 Completed; Phases 1-21 Production Verified)
 - **Target Status:** Milestone v3.0 — Enterprise AI Security, Guardrails, Universal Webhook Provider & LLM Gateway ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
 - **Completed Components (v3.0):**
   - **Phase 22 (Custom HTTP Webhook Provider & Live RAG Pipeline Benchmarking):** Universal `WebhookProvider` (`src/ragbench/providers/webhook.py`) enabling users to connect and benchmark arbitrary external RAG APIs, custom microservices, and proprietary LLM endpoints directly against golden datasets; configurable HTTP headers & Bearer tokens; dot-notation JSON path traversal for response answers (`response_path`) and dynamic retrieved context chunks (`contexts_path`); automatic evaluation of dynamic retrieved contexts in `EvaluationEngine` (hit rate, precision, recall); interactive UI integration in `Run New Evaluation`.
   - **Phase 23 (OpenAI-Compatible AI Gateway, Semantic Cache & Automated Failover):** Universal `/api/v1/gateway/chat/completions` endpoint supporting drop-in OpenAI SDK integration; sub-5ms in-memory and token Jaccard semantic caching delivering **$0.00 cost** on repeated/similar queries; automated provider failover chain (`primary -> fallbacks`) recovering from 429 rate limits or server outages with zero user downtime; workspace monthly USD budget caps and token quotas with automatic 429 quota enforcement; dedicated **AI Gateway (v3.1)** dashboard tab with live playground, cache stats, latency metrics, and budget controls.
+  - **Phase 24 (NVIDIA NeMo Guardrails Engine — Input / Output / Colang):** Zero-dependency, ultra-fast (<0.5ms) programmable runtime guardrail engine compatible with NVIDIA NeMo Guardrails and Colang flow specs; pre-execution Input Rails stopping prompt injections, adversarial DAN jailbreaks, and system prompt exfiltration attempts before LLM token consumption ($0.00 token cost on attacks); Colang-style Topical Rails keeping queries strictly bounded within designated business domains; post-execution Output Rails verifying model claims against retrieved RAG contexts with sentence-level grounding scores; seamless AI Gateway integration returning diagnostic metadata (`guardrails_applied`, `guardrails_blocked`, `guardrails_violations`); dedicated **AI Security & Guardrails (v3.2)** tab with 1-click attack presets, live dual-mode testing playground, and workspace policy editor.
 - **Completed Components (v2.0):**
   - **Phase 16 (Multi-Tenant Isolation):** Strict workspace-scoped sessions, foreign keys, private datasets/evaluations, delete endpoints, and Render free-tier sleep/wake detector.
   - **Phase 17 (Visual Analytics & Pareto Frontier):** `GET /api/v1/experiments/analytics/pareto` API, 2D Pareto Scatter Plot (Quality vs Latency), 5-Axis Metric Radar (Spider) Chart, and Historical Quality Trendlines.
@@ -22,7 +23,7 @@
   - Multi-stage Docker packaging (`Dockerfile` with dynamic port binding)
   - Render blueprint deployment configuration (`render.yaml` on Free Tier)
   - Automated GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`)
-- **Verified Test Suite:** 81 unit, integration, analytics, streaming, ingestion, agent trajectory, webhook, and AI Gateway tests passing (100%) + clean TypeScript checks. Complete mathematical specifications documented in [`docs/EVALUATION.md`](EVALUATION.md).
-- **Next Milestone:** Milestone v3.0 Phase 24 — NVIDIA NeMo Guardrails Engine (Input/Output/Colang) ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
+- **Verified Test Suite:** 95 unit, integration, analytics, streaming, ingestion, agent trajectory, webhook, AI Gateway, and NeMo guardrails tests passing (100%) + clean TypeScript checks. Complete mathematical specifications documented in [`docs/EVALUATION.md`](EVALUATION.md).
+- **Next Milestone:** Milestone v3.0 Phase 25 — Automated PII Masking & Data Sanitization Pipeline ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
 
 

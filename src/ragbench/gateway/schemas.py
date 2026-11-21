@@ -35,6 +35,8 @@ class ChatCompletionRequest(BaseModel):
         description="Cosine/Jaccard similarity threshold for semantic cache hits"
     )
     api_key: Optional[str] = Field(default=None, description="Optional direct BYOK key override")
+    guardrails_enabled: bool = Field(default=True, description="Enforce pre-execution and post-execution AI guardrails")
+    retrieved_contexts: Optional[List[str]] = Field(default=None, description="Optional retrieved RAG passages for output grounding verification")
 
 
 class ChatCompletionChoice(BaseModel):
@@ -62,6 +64,10 @@ class GatewayMetadata(BaseModel):
     attempted_providers: List[str] = Field(default_factory=list, description="All providers evaluated in order")
     cost_usd: float = Field(default=0.0, description="Actual cost incurred for this request")
     cost_saved_usd: float = Field(default=0.0, description="Estimated cost saved if served from cache")
+    guardrails_applied: bool = Field(default=False, description="Whether guardrails were evaluated")
+    guardrails_blocked: bool = Field(default=False, description="Whether request was blocked by guardrails")
+    guardrails_violations: List[str] = Field(default_factory=list, description="List of detected policy violations")
+    guardrails_latency_ms: float = Field(default=0.0, description="Guardrails inspection latency in ms")
 
 
 class ChatCompletionResponse(BaseModel):

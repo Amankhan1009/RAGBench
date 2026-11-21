@@ -745,6 +745,8 @@ export interface GatewayCompletionRequest {
   cache_enabled?: boolean;
   similarity_threshold?: number;
   api_key?: string;
+  guardrails_enabled?: boolean;
+  retrieved_contexts?: string[];
 }
 
 export interface GatewayMetadata {
@@ -757,6 +759,10 @@ export interface GatewayMetadata {
   attempted_providers: string[];
   cost_usd: number;
   cost_saved_usd: number;
+  guardrails_applied?: boolean;
+  guardrails_blocked?: boolean;
+  guardrails_violations?: string[];
+  guardrails_latency_ms?: number;
 }
 
 export interface GatewayCompletionResponse {
@@ -852,6 +858,123 @@ export async function callGatewayChatCompletions(
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.detail || `Gateway request failed [${res.status}]`);
+  }
+  return res.json();
+}
+
+// ==========================================
+// AI Security & Guardrails (Milestone v3.2)
+// ==========================================
+
+export interface GuardrailCheckResult {
+  passed: boolean;
+  action: "allow" | "block" | "rewrite" | "flag";
+  violations: string[];
+  confidence: number;
+  sanitized_text?: string | null;
+  refusal_response?: string | null;
+  reason: string;
+  execution_time_ms: number;
+}
+
+export interface TopicalRailConfig {
+  domain_name: string;
+  allowed_topics: string[];
+  disallowed_topics: string[];
+  refusal_message: string;
+}
+
+export interface WorkspaceGuardrailPolicy {
+  workspace_id: string;
+  input_rails_enabled: boolean;
+  jailbreak_blocker_enabled: boolean;
+  system_prompt_protection: boolean;
+  topical_rails_enabled: boolean;
+  output_rails_enabled: boolean;
+  hallucination_threshold: number;
+  topical_config: TopicalRailConfig;
+}
+
+export interface GuardrailPresetScenario {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  test_input: string;
+  contexts?: string[] | null;
+  expected_violation: string;
+  expected_action: string;
+}
+
+export interface InputRailRequest {
+  prompt: string;
+  check_jailbreaks?: boolean;
+  check_prompt_injection?: boolean;
+  check_system_leak?: boolean;
+}
+
+export interface OutputRailRequest {
+  response_text: string;
+  retrieved_contexts: string[];
+  hallucination_threshold?: number;
+}
+
+export async function fetchGuardrailPresets(): Promise<GuardrailPresetScenario[]> {
+  const res = await fetch(`${getApiBase()}/guardrails/presets`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch guardrail preset scenarios");
+  return res.json();
+}
+
+export async function fetchGuardrailPolicy(): Promise<WorkspaceGuardrailPolicy> {
+  const res = await fetch(`${getApiBase()}/guardrails/policy`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch workspace guardrail policy");
+  return res.json();
+}
+
+export async function updateGuardrailPolicy(
+  payload: WorkspaceGuardrailPolicy
+): Promise<WorkspaceGuardrailPolicy> {
+  const res = await fetch(`${getApiBase()}/guardrails/policy`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to update workspace guardrail policy");
+  return res.json();
+}
+
+export async function checkInputRail(
+  payload: InputRailRequest
+): Promise<GuardrailCheckResult> {
+  const res = await fetch(`${getApiBase()}/guardrails/check-input`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to inspect prompt with input rails");
+  }
+  return res.json();
+}
+
+export async function checkOutputRail(
+  payload: OutputRailRequest
+): Promise<GuardrailCheckResult> {
+  const res = await fetch(`${getApiBase()}/guardrails/check-output`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to verify output grounding with output rails");
   }
   return res.json();
 }

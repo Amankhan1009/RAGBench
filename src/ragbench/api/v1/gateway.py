@@ -21,6 +21,7 @@ from ragbench.gateway.schemas import (
     GatewayMetadata,
     UsageInfo,
 )
+from ragbench.guardrails.engine import guardrails_engine
 from ragbench.models.workspace import Workspace
 
 router = APIRouter(prefix="/gateway", tags=["AI Gateway & Semantic Cache"])
@@ -58,7 +59,53 @@ async def create_chat_completion(
 
     prompt = _extract_prompt_from_messages(payload.messages)
 
-    # 2. Check High-Speed Semantic / Exact Match Cache
+    # 2. Pre-Execution Guardrails (Input Injection, Jailbreaks, System Prompt Leak, Colang Topical Boundary)
+    guardrails_applied = False
+    guardrails_violations: List[str] = []
+    guardrails_latency_ms = 0.0
+
+    if payload.guardrails_enabled:
+        guardrails_applied = True
+        input_verdict = guardrails_engine.check_input(workspace.id, prompt)
+        guardrails_latency_ms = input_verdict.execution_time_ms
+
+        if not input_verdict.passed:
+            total_latency_ms = (time.perf_counter() - start_time) * 1000.0
+            guardrails_violations = input_verdict.violations
+            refusal_text = input_verdict.refusal_response or input_verdict.reason
+
+            return ChatCompletionResponse(
+                model=payload.model,
+                choices=[
+                    ChatCompletionChoice(
+                        index=0,
+                        message=ChatMessage(role="assistant", content=refusal_text),
+                        finish_reason="stop",
+                    )
+                ],
+                usage=UsageInfo(
+                    prompt_tokens=len(prompt.split()),
+                    completion_tokens=len(refusal_text.split()),
+                    total_tokens=len(prompt.split()) + len(refusal_text.split()),
+                ),
+                gateway=GatewayMetadata(
+                    cached=False,
+                    cache_key=None,
+                    latency_ms=round(total_latency_ms, 2),
+                    provider_used="NeMo Guardrails (Shield)",
+                    model_used=payload.model,
+                    fallback_triggered=False,
+                    attempted_providers=[],
+                    cost_usd=0.0,
+                    cost_saved_usd=0.0,
+                    guardrails_applied=True,
+                    guardrails_blocked=True,
+                    guardrails_violations=guardrails_violations,
+                    guardrails_latency_ms=round(guardrails_latency_ms, 2),
+                ),
+            )
+
+    # 3. Check High-Speed Semantic / Exact Match Cache
     if payload.cache_enabled:
         cache_result = gateway_cache.get(
             workspace_id=workspace.id,
@@ -72,17 +119,27 @@ async def create_chat_completion(
             cached_entry, match_type = cache_result
             lookup_latency_ms = (time.perf_counter() - start_time) * 1000.0
 
+            cached_text = cached_entry.response_text
+            if payload.guardrails_enabled and payload.retrieved_contexts:
+                output_verdict = guardrails_engine.check_output(
+                    workspace.id, cached_text, payload.retrieved_contexts
+                )
+                guardrails_latency_ms += output_verdict.execution_time_ms
+                if not output_verdict.passed:
+                    guardrails_violations.extend(output_verdict.violations)
+                    if output_verdict.sanitized_text:
+                        cached_text = output_verdict.sanitized_text
+
             return ChatCompletionResponse(
                 model=cached_entry.model,
                 choices=[
                     ChatCompletionChoice(
                         index=0,
-                        message=ChatMessage(role="assistant", content=cached_entry.response_text),
+                        message=ChatMessage(role="assistant", content=cached_text),
                         finish_reason=getattr(cached_entry, "finish_reason", "stop"),
                     )
                 ],
                 usage=UsageInfo(
-
                     prompt_tokens=cached_entry.prompt_tokens,
                     completion_tokens=cached_entry.completion_tokens,
                     total_tokens=cached_entry.prompt_tokens + cached_entry.completion_tokens,
@@ -97,10 +154,14 @@ async def create_chat_completion(
                     attempted_providers=[],
                     cost_usd=0.0,
                     cost_saved_usd=cached_entry.cost_usd,
+                    guardrails_applied=guardrails_applied,
+                    guardrails_blocked=False,
+                    guardrails_violations=guardrails_violations,
+                    guardrails_latency_ms=round(guardrails_latency_ms, 2),
                 ),
             )
 
-    # 3. Infer Provider & Route Through Resilient Failover Chain
+    # 4. Infer Provider & Route Through Resilient Failover Chain
     primary_provider = gateway_router.infer_provider(
         model=payload.model,
         explicit_provider=payload.provider,
@@ -153,12 +214,23 @@ async def create_chat_completion(
             finish_reason=finish_reason,
         )
 
+    response_text = provider_res.generated_text
+    if payload.guardrails_enabled and payload.retrieved_contexts:
+        output_verdict = guardrails_engine.check_output(
+            workspace.id, response_text, payload.retrieved_contexts
+        )
+        guardrails_latency_ms += output_verdict.execution_time_ms
+        if not output_verdict.passed:
+            guardrails_violations.extend(output_verdict.violations)
+            if output_verdict.sanitized_text:
+                response_text = output_verdict.sanitized_text
+
     return ChatCompletionResponse(
         model=payload.model,
         choices=[
             ChatCompletionChoice(
                 index=0,
-                message=ChatMessage(role="assistant", content=provider_res.generated_text),
+                message=ChatMessage(role="assistant", content=response_text),
                 finish_reason=finish_reason,
             )
         ],
@@ -168,7 +240,6 @@ async def create_chat_completion(
             total_tokens=provider_res.total_tokens,
         ),
         gateway=GatewayMetadata(
-
             cached=False,
             cache_key=cache_key[:12] if cache_key else None,
             latency_ms=round(total_latency_ms, 2),
@@ -178,6 +249,10 @@ async def create_chat_completion(
             attempted_providers=attempted_providers,
             cost_usd=provider_res.cost_usd,
             cost_saved_usd=0.0,
+            guardrails_applied=guardrails_applied,
+            guardrails_blocked=False,
+            guardrails_violations=guardrails_violations,
+            guardrails_latency_ms=round(guardrails_latency_ms, 2),
         ),
     )
 

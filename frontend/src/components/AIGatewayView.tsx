@@ -37,6 +37,7 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
   const [fallbackProvider, setFallbackProvider] = useState("mock");
   const [cacheEnabled, setCacheEnabled] = useState(true);
   const [similarityThreshold, setSimilarityThreshold] = useState(0.95);
+  const [guardrailsEnabled, setGuardrailsEnabled] = useState(true);
   const [maxTokens, setMaxTokens] = useState<number>(2500);
   const [sendingRequest, setSendingRequest] = useState(false);
 
@@ -123,6 +124,7 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
         fallback_providers: fallbackProvider ? [fallbackProvider] : ["mock"],
         cache_enabled: cacheEnabled,
         similarity_threshold: similarityThreshold,
+        guardrails_enabled: guardrailsEnabled,
         max_tokens: maxTokens,
       });
 
@@ -326,15 +328,29 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
 
               {/* Cache Controls */}
               <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={cacheEnabled}
-                    onChange={(e) => setCacheEnabled(e.target.checked)}
-                    className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0"
-                  />
-                  <span className="text-xs text-slate-300 font-medium">Enable Sub-5ms Semantic Cache</span>
-                </label>
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={cacheEnabled}
+                      onChange={(e) => setCacheEnabled(e.target.checked)}
+                      className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0"
+                    />
+                    <span className="text-xs text-slate-300 font-medium">Enable Sub-5ms Semantic Cache</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={guardrailsEnabled}
+                      onChange={(e) => setGuardrailsEnabled(e.target.checked)}
+                      className="rounded bg-slate-900 border-slate-700 text-emerald-500 focus:ring-0"
+                    />
+                    <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                      <span>🛡️</span> NeMo Guardrails Shield
+                    </span>
+                  </label>
+                </div>
 
                 {cacheEnabled && (
                   <div className="flex items-center gap-2">
@@ -381,6 +397,16 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
               <div className="mt-4 p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
                   <div className="flex items-center gap-2">
+                    {gatewayResponse.gateway.guardrails_blocked ? (
+                      <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] px-2 py-0.5 rounded font-mono font-bold flex items-center gap-1">
+                        <span>🚫</span> GUARDRAILS INTERCEPTED
+                      </span>
+                    ) : gatewayResponse.gateway.guardrails_applied ? (
+                      <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] px-2 py-0.5 rounded font-mono font-semibold flex items-center gap-1">
+                        <span>🛡️</span> GUARDRAILS PASSED
+                      </span>
+                    ) : null}
+
                     {gatewayResponse.gateway.cached ? (
                       <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] px-2 py-0.5 rounded font-mono font-bold flex items-center gap-1">
                         <span>⚡</span> CACHE HIT

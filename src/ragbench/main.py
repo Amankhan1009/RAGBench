@@ -11,6 +11,7 @@ from ragbench.api.v1.auth import router as auth_router
 from ragbench.api.v1.datasets import router as datasets_router
 from ragbench.api.v1.experiments import router as experiments_router
 from ragbench.api.v1.gateway import router as gateway_router
+from ragbench.api.v1.guardrails import router as guardrails_router
 from ragbench.api.v1.health import router as health_router
 from ragbench.core.config import settings
 from ragbench.core.logging import logger
@@ -111,6 +112,7 @@ app.include_router(datasets_router, prefix="/api/v1")
 app.include_router(experiments_router, prefix="/api/v1")
 app.include_router(agent_router, prefix="/api/v1")
 app.include_router(gateway_router, prefix="/api/v1")
+app.include_router(guardrails_router, prefix="/api/v1")
 
 
 
