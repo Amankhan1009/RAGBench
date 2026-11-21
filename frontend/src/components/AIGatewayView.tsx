@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import MarkdownRenderer from "./MarkdownRenderer";
 import {
+
   BudgetConfig,
   BudgetStatus,
   CacheStats,
@@ -38,6 +40,18 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
   const [sendingRequest, setSendingRequest] = useState(false);
   const [gatewayResponse, setGatewayResponse] = useState<GatewayCompletionResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Response Display Controls
+  const [responseViewMode, setResponseViewMode] = useState<"rendered" | "raw">("rendered");
+  const [copiedResponse, setCopiedResponse] = useState(false);
+
+  const handleCopyResponse = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedResponse(true);
+    showToast("Assistant response copied to clipboard!", "success");
+    setTimeout(() => setCopiedResponse(false), 2000);
+  };
+
 
   const loadData = async () => {
     setLoadingStats(true);
@@ -383,14 +397,68 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                   </div>
                 </div>
 
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">
-                    Assistant Response
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <span>🤖</span> Assistant Response
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setResponseViewMode("rendered")}
+                          className={`px-2.5 py-0.5 rounded font-medium transition ${
+                            responseViewMode === "rendered"
+                              ? "bg-indigo-600 text-white shadow-sm"
+                              : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          Formatted
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setResponseViewMode("raw")}
+                          className={`px-2.5 py-0.5 rounded font-medium transition ${
+                            responseViewMode === "raw"
+                              ? "bg-indigo-600 text-white shadow-sm"
+                              : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          Raw Markdown
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyResponse(gatewayResponse.choices[0]?.message?.content || "")}
+                        className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-300 rounded-lg transition flex items-center gap-1 font-medium"
+                      >
+                        {copiedResponse ? (
+                          <>
+                            <span className="text-emerald-400">✓</span>
+                            <span className="text-emerald-400 font-semibold">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>📋</span>
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-3 bg-slate-900 rounded-lg text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap">
-                    {gatewayResponse.choices[0]?.message?.content}
-                  </div>
+
+                  {responseViewMode === "rendered" ? (
+                    <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800/80 text-slate-200 leading-relaxed shadow-inner">
+                      <MarkdownRenderer content={gatewayResponse.choices[0]?.message?.content || ""} />
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap max-h-96 overflow-y-auto">
+                      {gatewayResponse.choices[0]?.message?.content}
+                    </div>
+                  )}
                 </div>
+
 
                 <div className="text-[11px] text-slate-500 flex flex-wrap gap-4 pt-1">
                   <span>Provider: <code className="text-slate-300">{gatewayResponse.gateway.provider_used}</code></span>
