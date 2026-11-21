@@ -17,8 +17,9 @@ class ChatCompletionRequest(BaseModel):
     model: str = Field(default="openai/gpt-oss-120b", description="Model identifier")
     messages: List[ChatMessage] = Field(min_length=1, description="Ordered list of message turns")
     temperature: float = Field(default=0.0, ge=0.0, le=2.0, description="Sampling temperature")
-    max_tokens: int = Field(default=1000, ge=1, le=8192, description="Maximum tokens to generate")
+    max_tokens: int = Field(default=2500, ge=1, le=8192, description="Maximum tokens to generate")
     stream: bool = Field(default=False, description="Streaming completion (reserved for future)")
+
 
     # Extended Gateway Routing & Caching Controls
     provider: Optional[str] = Field(default=None, description="Explicit provider override (e.g. 'groq', 'google', 'mock')")

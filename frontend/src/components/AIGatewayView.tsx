@@ -37,7 +37,9 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
   const [fallbackProvider, setFallbackProvider] = useState("mock");
   const [cacheEnabled, setCacheEnabled] = useState(true);
   const [similarityThreshold, setSimilarityThreshold] = useState(0.95);
+  const [maxTokens, setMaxTokens] = useState<number>(2500);
   const [sendingRequest, setSendingRequest] = useState(false);
+
   const [gatewayResponse, setGatewayResponse] = useState<GatewayCompletionResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -121,7 +123,9 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
         fallback_providers: fallbackProvider ? [fallbackProvider] : ["mock"],
         cache_enabled: cacheEnabled,
         similarity_threshold: similarityThreshold,
+        max_tokens: maxTokens,
       });
+
       setGatewayResponse(res);
       showToast(
         res.gateway.cached
@@ -258,8 +262,8 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                 />
               </div>
 
-              {/* Provider, Model, and Fallback Controls */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Provider, Model, Fallback, and Max Tokens Controls */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs text-slate-400 mb-1">Primary Provider</label>
                   <select
@@ -302,7 +306,23 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                     <option value="groq">Fallback to Groq</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Max Tokens Limit</label>
+                  <select
+                    value={maxTokens}
+                    onChange={(e) => setMaxTokens(parseInt(e.target.value, 10))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500 font-mono"
+                  >
+                    <option value={1000}>1,000 tokens (Short)</option>
+                    <option value={2000}>2,000 tokens (Standard)</option>
+                    <option value={2500}>2,500 tokens (Recommended)</option>
+                    <option value={4000}>4,000 tokens (Detailed &amp; Tables)</option>
+                    <option value={8000}>8,000 tokens (Max Capacity)</option>
+                  </select>
+                </div>
               </div>
+
 
               {/* Cache Controls */}
               <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-slate-950 rounded-lg border border-slate-800">
@@ -376,7 +396,14 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                         ⚠ Failover Triggered
                       </span>
                     )}
+
+                    {gatewayResponse.choices[0]?.finish_reason === "length" && (
+                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] px-2 py-0.5 rounded font-mono font-semibold flex items-center gap-1">
+                        <span>⚠️</span> Output Truncated (Hit Max Tokens)
+                      </span>
+                    )}
                   </div>
+
 
                   <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
                     <span>
@@ -397,7 +424,27 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                   </div>
                 </div>
 
+                {gatewayResponse.choices[0]?.finish_reason === "length" && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">💡</span>
+                      <span>The answer was cut off because it reached the current token limit ({gatewayResponse.usage.completion_tokens} tokens).</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMaxTokens(4000);
+                        showToast("Max Tokens set to 4,000. Click Send Request to regenerate full answer!", "success");
+                      }}
+                      className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] text-amber-200 font-semibold rounded-lg transition whitespace-nowrap shadow-sm"
+                    >
+                      Set to 4,000 Tokens &amp; Retry
+                    </button>
+                  </div>
+                )}
+
                 <div className="space-y-2">
+
                   <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
                     <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                       <span>🤖</span> Assistant Response

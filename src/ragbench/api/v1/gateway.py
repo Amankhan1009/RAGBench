@@ -78,10 +78,11 @@ async def create_chat_completion(
                     ChatCompletionChoice(
                         index=0,
                         message=ChatMessage(role="assistant", content=cached_entry.response_text),
-                        finish_reason="stop",
+                        finish_reason=getattr(cached_entry, "finish_reason", "stop"),
                     )
                 ],
                 usage=UsageInfo(
+
                     prompt_tokens=cached_entry.prompt_tokens,
                     completion_tokens=cached_entry.completion_tokens,
                     total_tokens=cached_entry.prompt_tokens + cached_entry.completion_tokens,
@@ -121,6 +122,13 @@ async def create_chat_completion(
 
     total_latency_ms = (time.perf_counter() - start_time) * 1000.0
 
+    # Extract finish_reason from provider metadata (e.g. 'length' if truncated, 'stop' if complete)
+    finish_reason = "stop"
+    if provider_res.raw_response and isinstance(provider_res.raw_response, dict):
+        raw_choices = provider_res.raw_response.get("choices")
+        if raw_choices and isinstance(raw_choices, list) and len(raw_choices) > 0:
+            finish_reason = raw_choices[0].get("finish_reason", "stop")
+
     # 4. Accrue Spend to Workspace Budget
     budget_manager.record_usage(
         workspace_id=workspace.id,
@@ -142,6 +150,7 @@ async def create_chat_completion(
             latency_ms=provider_res.latency_ms,
             provider_name=provider_used,
             temperature=payload.temperature,
+            finish_reason=finish_reason,
         )
 
     return ChatCompletionResponse(
@@ -150,7 +159,7 @@ async def create_chat_completion(
             ChatCompletionChoice(
                 index=0,
                 message=ChatMessage(role="assistant", content=provider_res.generated_text),
-                finish_reason="stop",
+                finish_reason=finish_reason,
             )
         ],
         usage=UsageInfo(
@@ -159,6 +168,7 @@ async def create_chat_completion(
             total_tokens=provider_res.total_tokens,
         ),
         gateway=GatewayMetadata(
+
             cached=False,
             cache_key=cache_key[:12] if cache_key else None,
             latency_ms=round(total_latency_ms, 2),

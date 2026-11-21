@@ -34,6 +34,7 @@ class CachedEntry:
         original_latency_ms: float,
         provider_name: str,
         ttl_seconds: int = 3600,
+        finish_reason: str = "stop",
     ):
         self.prompt = prompt
         self.model = model
@@ -43,7 +44,9 @@ class CachedEntry:
         self.cost_usd = cost_usd
         self.original_latency_ms = original_latency_ms
         self.provider_name = provider_name
+        self.finish_reason = finish_reason
         self.created_at = time.time()
+
         self.expires_at = self.created_at + ttl_seconds
         self.normalized_tokens = set(_normalize_text(prompt).split())
         self.hit_count = 0
@@ -160,6 +163,7 @@ class SemanticCache:
         provider_name: str,
         temperature: float = 0.0,
         ttl_seconds: Optional[int] = None,
+        finish_reason: str = "stop",
     ) -> str:
         """Store a generation result in the workspace cache."""
         w_cache = self._get_workspace_cache(workspace_id)
@@ -176,7 +180,9 @@ class SemanticCache:
             original_latency_ms=latency_ms,
             provider_name=provider_name,
             ttl_seconds=ttl,
+            finish_reason=finish_reason,
         )
+
         w_cache[cache_key] = entry
         return cache_key
 
