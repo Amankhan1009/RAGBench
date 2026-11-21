@@ -161,6 +161,8 @@ export default function Dashboard() {
   const [dsName, setDsName] = useState("");
   const [dsQuery, setDsQuery] = useState("");
   const [dsOutput, setDsOutput] = useState("");
+  const [dsContexts, setDsContexts] = useState("");
+
 
   const [selectedCandidateForCI, setSelectedCandidateForCI] = useState("");
   const [regressionReport, setRegressionReport] = useState<{
@@ -507,13 +509,17 @@ export default function Dashboard() {
     setLoading(true);
     showToast(`Creating dataset "${dsName}"...`, "loading");
     try {
+      const parsedContexts = dsContexts.trim()
+        ? dsContexts.split("\n").map((s) => s.trim()).filter(Boolean)
+        : [];
       await createDataset({
         name: dsName,
-        items: [{ query: dsQuery, expected_output: dsOutput }],
+        items: [{ query: dsQuery, expected_output: dsOutput, contexts: parsedContexts }],
       });
       setDsName("");
       setDsQuery("");
       setDsOutput("");
+      setDsContexts("");
       await loadAll();
       showToast(`Dataset "${dsName}" created!`, "success");
     } catch (err: unknown) {
@@ -1781,6 +1787,18 @@ export default function Dashboard() {
                         value={dsOutput}
                         onChange={(e) => setDsOutput(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">
+                        Reference Context Chunks (Optional, 1 per line)
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="e.g. Photosynthesis converts light energy into chemical energy."
+                        value={dsContexts}
+                        onChange={(e) => setDsContexts(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 outline-none focus:border-blue-500 font-mono text-xs"
                       />
                     </div>
                     <button
