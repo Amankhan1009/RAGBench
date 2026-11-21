@@ -725,3 +725,134 @@ export async function evaluateAgentTrajectory(
   }
   return res.json();
 }
+
+// ==========================================
+// AI Gateway & Semantic Cache (Milestone v3.1)
+// ==========================================
+
+export interface GatewayChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface GatewayCompletionRequest {
+  model: string;
+  messages: GatewayChatMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  provider?: string;
+  fallback_providers?: string[];
+  cache_enabled?: boolean;
+  similarity_threshold?: number;
+  api_key?: string;
+}
+
+export interface GatewayMetadata {
+  cached: boolean;
+  cache_key?: string;
+  latency_ms: number;
+  provider_used: string;
+  model_used: string;
+  fallback_triggered: boolean;
+  attempted_providers: string[];
+  cost_usd: number;
+  cost_saved_usd: number;
+}
+
+export interface GatewayCompletionResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: {
+    index: number;
+    message: GatewayChatMessage;
+    finish_reason: string;
+  }[];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  gateway: GatewayMetadata;
+}
+
+export interface CacheStats {
+  workspace_id: string;
+  total_requests: number;
+  cache_hits: number;
+  cache_misses: number;
+  hit_rate: number;
+  total_cost_saved_usd: number;
+  total_latency_saved_ms: number;
+  cached_entries_count: number;
+}
+
+export interface BudgetStatus {
+  workspace_id: string;
+  current_month_cost_usd: number;
+  current_month_tokens: number;
+  monthly_budget_usd?: number | null;
+  monthly_token_quota?: number | null;
+  cost_usage_percentage: number;
+  token_usage_percentage: number;
+  budget_exceeded: boolean;
+}
+
+export interface BudgetConfig {
+  monthly_budget_usd?: number | null;
+  monthly_token_quota?: number | null;
+}
+
+export async function fetchGatewayStats(): Promise<CacheStats> {
+  const res = await fetch(`${getApiBase()}/gateway/stats`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch gateway cache statistics");
+  return res.json();
+}
+
+export async function purgeGatewayCache(): Promise<{ status: string; message: string; cleared_count: number }> {
+  const res = await fetch(`${getApiBase()}/gateway/cache/purge`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to purge gateway cache");
+  return res.json();
+}
+
+export async function fetchGatewayBudget(): Promise<BudgetStatus> {
+  const res = await fetch(`${getApiBase()}/gateway/budget`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch gateway budget status");
+  return res.json();
+}
+
+export async function updateGatewayBudget(payload: BudgetConfig): Promise<BudgetStatus> {
+  const res = await fetch(`${getApiBase()}/gateway/budget`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to update gateway budget");
+  return res.json();
+}
+
+export async function callGatewayChatCompletions(
+  payload: GatewayCompletionRequest
+): Promise<GatewayCompletionResponse> {
+  const res = await fetch(`${getApiBase()}/gateway/chat/completions`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || `Gateway request failed [${res.status}]`);
+  }
+  return res.json();
+}
+

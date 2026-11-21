@@ -1,0 +1,233 @@
+"""OpenAI-compatible AI Gateway REST API with Semantic Caching, Failover, and Budgets."""
+import time
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ragbench.api.v1.auth import get_current_workspace
+from ragbench.db.session import get_db
+from ragbench.gateway.budget import budget_manager
+from ragbench.gateway.cache import gateway_cache
+from ragbench.gateway.router import gateway_router
+from ragbench.gateway.schemas import (
+    BudgetConfig,
+    BudgetStatus,
+    CacheStats,
+    ChatCompletionChoice,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatMessage,
+    GatewayMetadata,
+    UsageInfo,
+)
+from ragbench.models.workspace import Workspace
+
+router = APIRouter(prefix="/gateway", tags=["AI Gateway & Semantic Cache"])
+
+
+def _extract_prompt_from_messages(messages: List[ChatMessage]) -> str:
+    """Flatten chat messages into unified context prompt for model generation."""
+    if len(messages) == 1:
+        return messages[0].content
+
+    formatted_turns = []
+    for msg in messages:
+        role_label = msg.role.capitalize()
+        formatted_turns.append(f"{role_label}: {msg.content}")
+    return "\n\n".join(formatted_turns)
+
+
+@router.post(
+    "/chat/completions",
+    response_model=ChatCompletionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Universal OpenAI-Compatible Chat Completions Proxy",
+    description="Drop-in OpenAI chat endpoint featuring sub-5ms semantic caching, automated provider failovers, and budget caps.",
+)
+async def create_chat_completion(
+    payload: ChatCompletionRequest,
+    workspace: Workspace = Depends(get_current_workspace),
+    db: AsyncSession = Depends(get_db),
+):
+    """Execute chat completion with transparent semantic caching and resilient multi-provider routing."""
+    start_time = time.perf_counter()
+
+    # 1. Enforce Workspace Budget Cap
+    budget_manager.check_budget(workspace.id)
+
+    prompt = _extract_prompt_from_messages(payload.messages)
+
+    # 2. Check High-Speed Semantic / Exact Match Cache
+    if payload.cache_enabled:
+        cache_result = gateway_cache.get(
+            workspace_id=workspace.id,
+            prompt=prompt,
+            model=payload.model,
+            temperature=payload.temperature,
+            similarity_threshold=payload.similarity_threshold,
+        )
+
+        if cache_result is not None:
+            cached_entry, match_type = cache_result
+            lookup_latency_ms = (time.perf_counter() - start_time) * 1000.0
+
+            return ChatCompletionResponse(
+                model=cached_entry.model,
+                choices=[
+                    ChatCompletionChoice(
+                        index=0,
+                        message=ChatMessage(role="assistant", content=cached_entry.response_text),
+                        finish_reason="stop",
+                    )
+                ],
+                usage=UsageInfo(
+                    prompt_tokens=cached_entry.prompt_tokens,
+                    completion_tokens=cached_entry.completion_tokens,
+                    total_tokens=cached_entry.prompt_tokens + cached_entry.completion_tokens,
+                ),
+                gateway=GatewayMetadata(
+                    cached=True,
+                    cache_key=f"hit_{match_type}",
+                    latency_ms=round(lookup_latency_ms, 2),
+                    provider_used=f"{cached_entry.provider_name} (Cached)",
+                    model_used=cached_entry.model,
+                    fallback_triggered=False,
+                    attempted_providers=[],
+                    cost_usd=0.0,
+                    cost_saved_usd=cached_entry.cost_usd,
+                ),
+            )
+
+    # 3. Infer Provider & Route Through Resilient Failover Chain
+    primary_provider = gateway_router.infer_provider(
+        model=payload.model,
+        explicit_provider=payload.provider,
+    )
+
+    provider_res, provider_used, fallback_triggered, attempted_providers = (
+        await gateway_router.execute_with_fallback(
+            workspace_id=workspace.id,
+            prompt=prompt,
+            model=payload.model,
+            temperature=payload.temperature,
+            max_tokens=payload.max_tokens,
+            primary_provider=primary_provider,
+            fallback_providers=payload.fallback_providers,
+            direct_key=payload.api_key,
+            db=db,
+        )
+    )
+
+    total_latency_ms = (time.perf_counter() - start_time) * 1000.0
+
+    # 4. Accrue Spend to Workspace Budget
+    budget_manager.record_usage(
+        workspace_id=workspace.id,
+        cost_usd=provider_res.cost_usd,
+        tokens=provider_res.total_tokens,
+    )
+
+    # 5. Populate Cache on Cache Miss
+    cache_key = None
+    if payload.cache_enabled:
+        cache_key = gateway_cache.set(
+            workspace_id=workspace.id,
+            prompt=prompt,
+            model=payload.model,
+            response_text=provider_res.generated_text,
+            prompt_tokens=provider_res.prompt_tokens,
+            completion_tokens=provider_res.completion_tokens,
+            cost_usd=provider_res.cost_usd,
+            latency_ms=provider_res.latency_ms,
+            provider_name=provider_used,
+            temperature=payload.temperature,
+        )
+
+    return ChatCompletionResponse(
+        model=payload.model,
+        choices=[
+            ChatCompletionChoice(
+                index=0,
+                message=ChatMessage(role="assistant", content=provider_res.generated_text),
+                finish_reason="stop",
+            )
+        ],
+        usage=UsageInfo(
+            prompt_tokens=provider_res.prompt_tokens,
+            completion_tokens=provider_res.completion_tokens,
+            total_tokens=provider_res.total_tokens,
+        ),
+        gateway=GatewayMetadata(
+            cached=False,
+            cache_key=cache_key[:12] if cache_key else None,
+            latency_ms=round(total_latency_ms, 2),
+            provider_used=provider_used,
+            model_used=payload.model,
+            fallback_triggered=fallback_triggered,
+            attempted_providers=attempted_providers,
+            cost_usd=provider_res.cost_usd,
+            cost_saved_usd=0.0,
+        ),
+    )
+
+
+@router.get(
+    "/stats",
+    response_model=CacheStats,
+    status_code=status.HTTP_200_OK,
+    summary="Get Semantic Cache & Gateway Performance Metrics",
+)
+async def get_gateway_stats(
+    workspace: Workspace = Depends(get_current_workspace),
+):
+    """Retrieve cache hit rate, cost saved, and latency saved for the active workspace."""
+    return gateway_cache.get_stats(workspace.id)
+
+
+@router.post(
+    "/cache/purge",
+    status_code=status.HTTP_200_OK,
+    summary="Purge Workspace Semantic Cache",
+)
+async def purge_gateway_cache(
+    workspace: Workspace = Depends(get_current_workspace),
+):
+    """Flush all cached generation results for the current workspace."""
+    cleared_count = gateway_cache.purge(workspace.id)
+    return {
+        "status": "success",
+        "message": f"Successfully purged {cleared_count} cached entries from AI Gateway.",
+        "cleared_count": cleared_count,
+    }
+
+
+@router.get(
+    "/budget",
+    response_model=BudgetStatus,
+    status_code=status.HTTP_200_OK,
+    summary="Get Workspace Monthly Budget Usage & Limits",
+)
+async def get_workspace_budget(
+    workspace: Workspace = Depends(get_current_workspace),
+):
+    """View current cumulative month-to-date spend and configured budget caps."""
+    return budget_manager.get_status(workspace.id)
+
+
+@router.post(
+    "/budget",
+    response_model=BudgetStatus,
+    status_code=status.HTTP_200_OK,
+    summary="Update Workspace Monthly Budget Limits",
+)
+async def update_workspace_budget(
+    payload: BudgetConfig,
+    workspace: Workspace = Depends(get_current_workspace),
+):
+    """Configure or adjust monthly USD spending limit and token quota for the active workspace."""
+    return budget_manager.set_limits(
+        workspace_id=workspace.id,
+        monthly_budget_usd=payload.monthly_budget_usd,
+        monthly_token_quota=payload.monthly_token_quota,
+    )

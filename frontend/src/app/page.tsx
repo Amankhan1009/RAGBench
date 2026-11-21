@@ -39,6 +39,8 @@ import SyntheticDatasetGenerator from "../components/SyntheticDatasetGenerator";
 import DatasetFileIngestion from "../components/DatasetFileIngestion";
 import ExecutiveReportModal from "../components/ExecutiveReportModal";
 import AgentTrajectoryInspector from "../components/AgentTrajectoryInspector";
+import AIGatewayView from "../components/AIGatewayView";
+
 
 function Spinner({ className = "" }: { className?: string }) {
   return (
@@ -85,7 +87,8 @@ export default function Dashboard() {
   const [wakeProgress, setWakeProgress] = useState<{ attempt: number; maxAttempts: number } | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
-  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "agent" | "api_keys">("experiments");
+  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "agent" | "gateway" | "api_keys">("experiments");
+
   const [datasetMode, setDatasetMode] = useState<"synthetic" | "ingest" | "manual">("synthetic");
   const [exportModalExp, setExportModalExp] = useState<Experiment | null>(null);
   const [analyticsData, setAnalyticsData] = useState<ParetoAnalyticsResponse | null>(null);
@@ -1134,7 +1137,7 @@ export default function Dashboard() {
 
       {/* Navigation Tabs */}
       <div className="max-w-7xl mx-auto mt-8 flex flex-wrap border-b border-slate-800 gap-8">
-        {(["experiments", "analytics", "regression", "datasets", "agent", "api_keys"] as const).map((tab) => (
+        {(["experiments", "analytics", "regression", "datasets", "agent", "gateway", "api_keys"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1170,6 +1173,14 @@ export default function Dashboard() {
                 </span>
               </>
             )}
+            {tab === "gateway" && (
+              <>
+                <span>AI Gateway</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+                  v3.1
+                </span>
+              </>
+            )}
             {tab === "api_keys" && (
               <>
                 <span>API Keys (BYOK)</span>
@@ -1183,6 +1194,7 @@ export default function Dashboard() {
           </button>
         ))}
       </div>
+
 
       <main className="max-w-7xl mx-auto mt-8">
         {/* TAB 1: EXPERIMENTS */}
@@ -1912,7 +1924,13 @@ export default function Dashboard() {
           <AgentTrajectoryInspector showToast={showToast} />
         )}
 
+        {/* TAB: AI GATEWAY & SEMANTIC CACHE (v3.1) */}
+        {activeTab === "gateway" && (
+          <AIGatewayView showToast={showToast} />
+        )}
+
         {/* TAB 4: API KEYS (BYOK) */}
+
         {activeTab === "api_keys" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Form */}
