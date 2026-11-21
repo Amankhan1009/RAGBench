@@ -1,7 +1,9 @@
 # RAGBench — Current State
 
-- **Current Status:** Version 2.0 COMPLETED (Phases 16, 17, 18, 19, 20 & 21 Completed)
-- **Target Status:** Version 2.0 Production Verification & Milestone v3.0 Planning ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
+- **Current Status:** Version 3.0 IN PROGRESS (Phase 22 Completed; Phases 1-21 Production Verified)
+- **Target Status:** Milestone v3.0 — Enterprise AI Security, Guardrails, Universal Webhook Provider & LLM Gateway ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
+- **Completed Components (v3.0):**
+  - **Phase 22 (Custom HTTP Webhook Provider & Live RAG Pipeline Benchmarking):** Universal `WebhookProvider` (`src/ragbench/providers/webhook.py`) enabling users to connect and benchmark arbitrary external RAG APIs, custom microservices, and proprietary LLM endpoints directly against golden datasets; configurable HTTP headers & Bearer tokens; dot-notation JSON path traversal for response answers (`response_path`) and dynamic retrieved context chunks (`contexts_path`); automatic evaluation of dynamic retrieved contexts in `EvaluationEngine` (hit rate, precision, recall); interactive UI integration in `Run New Evaluation`.
 - **Completed Components (v2.0):**
   - **Phase 16 (Multi-Tenant Isolation):** Strict workspace-scoped sessions, foreign keys, private datasets/evaluations, delete endpoints, and Render free-tier sleep/wake detector.
   - **Phase 17 (Visual Analytics & Pareto Frontier):** `GET /api/v1/experiments/analytics/pareto` API, 2D Pareto Scatter Plot (Quality vs Latency), 5-Axis Metric Radar (Spider) Chart, and Historical Quality Trendlines.
@@ -11,7 +13,7 @@
   - **Phase 21 (Dedicated Agent Trajectory & Loop Inspector UI):** `GET /api/v1/agent/scenarios` and `POST /api/v1/agent/evaluate-trajectory` APIs; interactive multi-step visual flow timeline graph (`Thought -> Action -> Observation -> Final Answer`); infinite loop & redundant call detector; missing expected tool diagnostic alerts; path efficiency scoring.
 - **Completed Components (v1.0):**
   - Full hybrid evaluation engine (Deterministic + LLM-as-a-Judge)
-  - 100% Model-independent LLM provider abstraction layer (Groq, OpenAI, Anthropic, Google Gemini)
+  - 100% Model-independent LLM provider abstraction layer (Groq, OpenAI, Anthropic, Google Gemini, Webhook)
   - Bring Your Own Key (BYOK) vault with AES-256 Fernet encryption and inline key resolution
   - Regression detection engine with automated tolerance threshold gating
   - LangSmith tracing integration with automated secret scrubbing and HTTP 202 acceptance
@@ -19,5 +21,6 @@
   - Multi-stage Docker packaging (`Dockerfile` with dynamic port binding)
   - Render blueprint deployment configuration (`render.yaml` on Free Tier)
   - Automated GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`)
-- **Verified Test Suite:** 60+ unit, integration, analytics, streaming, ingestion, and agent trajectory tests passing + clean TypeScript checks. Complete mathematical specifications documented in [`docs/EVALUATION.md`](EVALUATION.md).
-- **Next Milestone:** Milestone v3.0 — Enterprise AI Security, Guardrails & LLM Gateway ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
+- **Verified Test Suite:** 70 unit, integration, analytics, streaming, ingestion, agent trajectory, and custom webhook provider tests passing (100%) + clean TypeScript checks. Complete mathematical specifications documented in [`docs/EVALUATION.md`](EVALUATION.md).
+- **Next Milestone:** Milestone v3.0 Phase 23 — NVIDIA NeMo Guardrails & Portkey Gateway Architecture ([`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md))
+

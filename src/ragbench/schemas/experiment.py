@@ -13,6 +13,11 @@ class ExperimentCreate(BaseModel):
     provider_name: str = Field(default="mock", description="LLM provider name")
     model_name: str = Field(default="mock-model", description="Model ID")
     api_key: Optional[str] = Field(default=None, description="Optional BYOK key")
+    webhook_url: Optional[str] = Field(default=None, description="Target HTTP endpoint for custom webhook RAG provider")
+    response_path: Optional[str] = Field(default="answer", description="JSON key or dot-path to extract generated answer")
+    contexts_path: Optional[str] = Field(default="contexts", description="JSON key or dot-path to extract retrieved contexts")
+    headers: Optional[Dict[str, str]] = Field(default=None, description="Custom HTTP headers for webhook provider")
+
 
 
 class ExperimentItemResponse(BaseModel):

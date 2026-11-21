@@ -153,12 +153,14 @@ Bridge live production monitoring with automated offline regression testing.
 
 ## Version 3.0 Milestone Schedule
 
-| Phase | Milestone | Feature Description | Core Stack |
-| :---: | :---: | :--- | :--- |
-| **Phase 22** | **v3.1** | **Portkey Open-Source AI Gateway & Semantic Cache** | Portkey Gateway, Redis/In-Memory Cache |
-| **Phase 23** | **v3.2** | **NVIDIA NeMo Guardrails Engine (Input/Output/Colang)** | `nemoguardrails`, Colang |
-| **Phase 24** | **v3.3** | **Automated PII Masking & Data Sanitization Pipeline** | Python Regex Engine, Presidio/ONNX |
-| **Phase 25** | **v3.4** | **AI Red-Teaming & Adversarial Benchmark Suite** | Automated Fuzzing, Security Evaluator |
-| **Phase 26** | **v3.5** | **Enterprise RBAC & Tamper-Evident Audit Logging** | SQLAlchemy RBAC, Structured Audit Trail |
-| **Phase 27** | **v3.6** | **Production Traffic Shadowing ("Golden Set Harvester")** | Async Telemetry Gateway, Harvester UI |
+| Phase | Milestone | Feature Description | Core Stack | Status |
+| :---: | :---: | :--- | :--- | :---: |
+| **Phase 22** | **v3.0.1** | **Universal Custom HTTP Webhook Provider** | `WebhookProvider`, Dot-Path Extraction, Dynamic Contexts | **COMPLETED** |
+| **Phase 23** | **v3.1** | **Portkey Open-Source AI Gateway & Semantic Cache** | Portkey Gateway, Redis/In-Memory Cache | Up Next |
+| **Phase 24** | **v3.2** | **NVIDIA NeMo Guardrails Engine (Input/Output/Colang)** | `nemoguardrails`, Colang | Planned |
+| **Phase 25** | **v3.3** | **Automated PII Masking & Data Sanitization Pipeline** | Python Regex Engine, Presidio/ONNX | Planned |
+| **Phase 26** | **v3.4** | **AI Red-Teaming & Adversarial Benchmark Suite** | Automated Fuzzing, Security Evaluator | Planned |
+| **Phase 27** | **v3.5** | **Enterprise RBAC & Tamper-Evident Audit Logging** | SQLAlchemy RBAC, Structured Audit Trail | Planned |
+| **Phase 28** | **v3.6** | **Production Traffic Shadowing ("Golden Set Harvester")** | Async Telemetry Gateway, Harvester UI | Planned |
+
 

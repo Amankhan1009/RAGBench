@@ -401,6 +401,10 @@ export async function runExperiment(payload: {
   provider_name: string;
   model_name?: string;
   api_key?: string;
+  webhook_url?: string;
+  response_path?: string;
+  contexts_path?: string;
+  headers?: Record<string, string>;
 }): Promise<Experiment> {
   const res = await fetch(`${getApiBase()}/experiments`, {
     method: "POST",
@@ -418,6 +422,10 @@ export async function streamExperiment(
     provider_name: string;
     model_name?: string;
     api_key?: string;
+    webhook_url?: string;
+    response_path?: string;
+    contexts_path?: string;
+    headers?: Record<string, string>;
   },
   callbacks: {
     onStart?: (data: StreamStartEvent) => void;

@@ -57,14 +57,18 @@ async def create_experiment(
     if not dataset:
         raise HTTPException(status_code=404, detail=f"Dataset '{payload.dataset_id}' not found in active workspace.")
 
+    p_name = payload.provider_name.lower()
+    is_custom_webhook = p_name in ["webhook", "custom"]
     effective_key = payload.api_key
-    if not effective_key or (effective_key == "mock-key" and payload.provider_name.lower() != "mock"):
-        if payload.provider_name.lower() == "mock":
+    if is_custom_webhook:
+        effective_key = payload.api_key or ""
+    elif not effective_key or (effective_key == "mock-key" and p_name != "mock"):
+        if p_name == "mock":
             effective_key = "mock-key"
         else:
             key_stmt = select(WorkspaceApiKey).where(
                 WorkspaceApiKey.workspace_id == workspace.id,
-                WorkspaceApiKey.provider == payload.provider_name.lower(),
+                WorkspaceApiKey.provider == p_name,
             )
             key_record = (await db.execute(key_stmt)).scalar_one_or_none()
             if key_record:
@@ -86,7 +90,16 @@ async def create_experiment(
                     )
 
     try:
-        provider = ProviderFactory.create(payload.provider_name, api_key=effective_key, model=payload.model_name)
+        model_target = payload.webhook_url or payload.model_name
+        provider = ProviderFactory.create(
+            payload.provider_name,
+            api_key=effective_key,
+            model=model_target,
+            webhook_url=payload.webhook_url,
+            response_path=payload.response_path,
+            contexts_path=payload.contexts_path,
+            headers=payload.headers,
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Failed to instantiate provider: {str(exc)}")
 
@@ -98,7 +111,7 @@ async def create_experiment(
         dataset_id=payload.dataset_id,
         workspace_id=workspace.id,
         provider_name=payload.provider_name,
-        model_name=payload.model_name,
+        model_name=payload.webhook_url or payload.model_name,
         status="RUNNING"
     )
     db.add(experiment)
@@ -119,11 +132,18 @@ async def create_experiment(
                 },
             ) as trace_outputs:
                 gen_res = await provider.generate(ds_item.query)
+                # Check for dynamic retrieved contexts from custom RAG webhook response
+                retrieved_ctx = ds_item.contexts or []
+                if gen_res.raw_response and isinstance(gen_res.raw_response, dict):
+                    custom_ctx = gen_res.raw_response.get("retrieved_contexts")
+                    if custom_ctx and isinstance(custom_ctx, list) and len(custom_ctx) > 0:
+                        retrieved_ctx = custom_ctx
+
                 eval_dict = engine.evaluate_sample(
                     query=ds_item.query,
                     response=gen_res.generated_text,
                     expected_output=ds_item.expected_output,
-                    retrieved_contexts=ds_item.contexts,
+                    retrieved_contexts=retrieved_ctx,
                     ground_truth_contexts=ds_item.contexts,
                     latency_ms=gen_res.latency_ms,
                     total_tokens=gen_res.total_tokens,
@@ -190,14 +210,18 @@ async def create_experiment_stream(
             detail="Cannot run evaluation on an empty dataset. Please add dataset items first.",
         )
 
+    p_name = payload.provider_name.lower()
+    is_custom_webhook = p_name in ["webhook", "custom"]
     effective_key = payload.api_key
-    if not effective_key or (effective_key == "mock-key" and payload.provider_name.lower() != "mock"):
-        if payload.provider_name.lower() == "mock":
+    if is_custom_webhook:
+        effective_key = payload.api_key or ""
+    elif not effective_key or (effective_key == "mock-key" and p_name != "mock"):
+        if p_name == "mock":
             effective_key = "mock-key"
         else:
             key_stmt = select(WorkspaceApiKey).where(
                 WorkspaceApiKey.workspace_id == workspace.id,
-                WorkspaceApiKey.provider == payload.provider_name.lower(),
+                WorkspaceApiKey.provider == p_name,
             )
             key_record = (await db.execute(key_stmt)).scalar_one_or_none()
             if key_record:
@@ -219,7 +243,16 @@ async def create_experiment_stream(
                     )
 
     try:
-        provider = ProviderFactory.create(payload.provider_name, api_key=effective_key, model=payload.model_name)
+        model_target = payload.webhook_url or payload.model_name
+        provider = ProviderFactory.create(
+            payload.provider_name,
+            api_key=effective_key,
+            model=model_target,
+            webhook_url=payload.webhook_url,
+            response_path=payload.response_path,
+            contexts_path=payload.contexts_path,
+            headers=payload.headers,
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Failed to instantiate provider: {str(exc)}")
 
@@ -246,7 +279,7 @@ async def create_experiment_stream(
                     dataset_id=payload.dataset_id,
                     workspace_id=workspace.id,
                     provider_name=payload.provider_name,
-                    model_name=payload.model_name,
+                    model_name=payload.webhook_url or payload.model_name,
                     status="RUNNING",
                 )
                 stream_db.add(experiment)
@@ -257,7 +290,7 @@ async def create_experiment_stream(
                     experiment_name=experiment.name,
                     total_samples=total_samples,
                     provider_name=payload.provider_name,
-                    model_name=payload.model_name,
+                    model_name=payload.webhook_url or payload.model_name,
                     dataset_name=dataset.name,
                 )
                 yield f"event: started\ndata: {start_event.model_dump_json()}\n\n"
@@ -284,11 +317,18 @@ async def create_experiment_stream(
                             },
                         ) as trace_outputs:
                             gen_res = await provider.generate(ds_item["query"])
+                            # Check for dynamic retrieved contexts from custom RAG webhook response
+                            retrieved_ctx = ds_item["contexts"]
+                            if gen_res.raw_response and isinstance(gen_res.raw_response, dict):
+                                custom_ctx = gen_res.raw_response.get("retrieved_contexts")
+                                if custom_ctx and isinstance(custom_ctx, list) and len(custom_ctx) > 0:
+                                    retrieved_ctx = custom_ctx
+
                             eval_dict = engine.evaluate_sample(
                                 query=ds_item["query"],
                                 response=gen_res.generated_text,
                                 expected_output=ds_item["expected_output"],
-                                retrieved_contexts=ds_item["contexts"],
+                                retrieved_contexts=retrieved_ctx,
                                 ground_truth_contexts=ds_item["contexts"],
                                 latency_ms=gen_res.latency_ms,
                                 total_tokens=gen_res.total_tokens,

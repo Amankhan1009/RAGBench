@@ -151,6 +151,13 @@ export default function Dashboard() {
   const [runApiKey, setRunApiKey] = useState("");
   const [saveRunKeyToVault, setSaveRunKeyToVault] = useState(true);
 
+  // Custom Webhook / RAG Endpoint state (Milestone v3.0)
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookResponsePath, setWebhookResponsePath] = useState("answer");
+  const [webhookContextsPath, setWebhookContextsPath] = useState("contexts");
+  const [webhookAuthToken, setWebhookAuthToken] = useState("");
+
+
   const [dsName, setDsName] = useState("");
   const [dsQuery, setDsQuery] = useState("");
   const [dsOutput, setDsOutput] = useState("");
@@ -380,7 +387,7 @@ export default function Dashboard() {
     showToast("Launching live evaluation stream...", "loading");
 
     try {
-      if (runApiKey.trim() && saveRunKeyToVault && provider !== "mock") {
+      if (runApiKey.trim() && saveRunKeyToVault && provider !== "mock" && provider !== "webhook") {
         await registerApiKey(provider, runApiKey.trim()).catch(() => {});
         const updatedKeys = await fetchApiKeys().catch(() => []);
         setApiKeys(updatedKeys);
@@ -391,9 +398,13 @@ export default function Dashboard() {
           name: expName || `Benchmark Run ${experiments.length + 1}`,
           dataset_id: selectedDataset,
           provider_name: provider,
-          model_name: model,
-          api_key: runApiKey.trim() || undefined,
+          model_name: provider === "webhook" ? (webhookUrl || "custom-webhook") : model,
+          api_key: (provider === "webhook" ? webhookAuthToken : runApiKey).trim() || undefined,
+          webhook_url: provider === "webhook" ? webhookUrl.trim() : undefined,
+          response_path: provider === "webhook" ? (webhookResponsePath.trim() || "answer") : undefined,
+          contexts_path: provider === "webhook" ? (webhookContextsPath.trim() || "contexts") : undefined,
         },
+
         {
           onStart: (data) => {
             setStreamStart(data);
@@ -1221,11 +1232,13 @@ export default function Dashboard() {
                       else if (e.target.value === "openai") setModel("gpt-4o-mini");
                       else if (e.target.value === "anthropic") setModel("claude-3-5-sonnet-20241022");
                       else if (e.target.value === "google") setModel("gemini-1.5-flash");
+                      else if (e.target.value === "webhook") setModel(webhookUrl || "custom-webhook");
                       else setModel("mock-model");
                     }}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 focus:border-blue-500 outline-none"
                   >
                     <option value="mock">Mock Provider (Deterministic)</option>
+                    <option value="webhook">Custom HTTP Endpoint / Webhook (Any RAG API)</option>
                     <option value="groq">Groq (openai/gpt-oss-120b)</option>
                     <option value="openai">OpenAI (GPT-4o Mini)</option>
                     <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
@@ -1233,8 +1246,83 @@ export default function Dashboard() {
                   </select>
                 </div>
 
+                {/* CUSTOM HTTP WEBHOOK RAG CONFIGURATION (Milestone v3.0) */}
+                {provider === "webhook" && (
+                  <div className="p-3 bg-slate-950 rounded-lg border border-indigo-500/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
+                        <span>🌐</span> Custom RAG Webhook Configuration
+                      </span>
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30">
+                        Milestone v3.0
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] text-slate-300 mb-1 font-medium">
+                        Target Webhook URL <span className="text-rose-400">*</span>
+                      </label>
+                      <input
+                        type="url"
+                        required
+                        placeholder="https://api.yourcompany.com/rag/query"
+                        value={webhookUrl}
+                        onChange={(e) => {
+                          setWebhookUrl(e.target.value);
+                          setModel(e.target.value);
+                        }}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 focus:border-indigo-500 outline-none font-mono text-xs text-slate-200"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] text-slate-300 mb-1 font-medium">
+                          Answer Field Path
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="answer"
+                          value={webhookResponsePath}
+                          onChange={(e) => setWebhookResponsePath(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-none font-mono text-xs text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-300 mb-1 font-medium">
+                          Contexts Field Path
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="contexts"
+                          value={webhookContextsPath}
+                          onChange={(e) => setWebhookContextsPath(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-none font-mono text-xs text-slate-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] text-slate-300 mb-1 font-medium">
+                        Authorization Token (Optional)
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Bearer token or API key"
+                        value={webhookAuthToken}
+                        onChange={(e) => setWebhookAuthToken(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 focus:border-indigo-500 outline-none font-mono text-xs text-slate-200"
+                      />
+                    </div>
+
+                    <div className="text-[11px] text-slate-400 bg-slate-900/60 p-2 rounded border border-slate-800/80">
+                      💡 RAGBench sends HTTP POST <code className="text-indigo-300">{`{ query, prompt }`}</code> and benchmarks your system&apos;s answer and retrieved contexts against golden references.
+                    </div>
+                  </div>
+                )}
+
                 {/* DIRECT BYOK API KEY INPUT IN EXPERIMENT RUN CARD */}
-                {provider !== "mock" && (
+                {provider !== "mock" && provider !== "webhook" && (
                   <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-semibold text-slate-300">
@@ -1293,15 +1381,18 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-slate-400 mb-1">Model Identifier</label>
-                  <input
-                    type="text"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 focus:border-blue-500 outline-none"
-                  />
-                </div>
+                {provider !== "webhook" && (
+                  <div>
+                    <label className="block text-slate-400 mb-1">Model Identifier</label>
+                    <input
+                      type="text"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                )}
+
 
                 <button
                   type="submit"
