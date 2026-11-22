@@ -24,11 +24,11 @@
 *Detailed specifications available in [`docs/V2_ROADMAP.md`](V2_ROADMAP.md)*
 
 - [x] **Phase 16 — Strict Multi-Tenant Isolation & Workspace-Scoped Sessions**
-- [ ] **Phase 17 — Interactive Visual Analytics & Pareto Frontier (Quality vs. Speed/Cost)**
-- [ ] **Phase 18 — Real-Time Streaming & Live Evaluation Progress (SSE)**
-- [ ] **Phase 19 — Synthetic AI Test Dataset Generator (LLM-Assisted)**
-- [ ] **Phase 20 — One-Click Ingestion (CSV / JSONL) & Executive Report Export**
-- [ ] **Phase 21 — Dedicated Agent Trajectory & Loop Inspector UI**
+- [x] **Phase 17 — Interactive Visual Analytics & Pareto Frontier (Quality vs. Speed/Cost)**
+- [x] **Phase 18 — Real-Time Streaming & Live Evaluation Progress (SSE)**
+- [x] **Phase 19 — Synthetic AI Test Dataset Generator (LLM-Assisted)**
+- [x] **Phase 20 — One-Click Ingestion (CSV / JSONL) & Executive Report Export**
+- [x] **Phase 21 — Dedicated Agent Trajectory & Loop Inspector UI**
 
 ---
 
@@ -36,10 +36,11 @@
 
 *Detailed specifications available in [`docs/V3_SECURITY_ROADMAP.md`](V3_SECURITY_ROADMAP.md)*
 
-- [ ] **Phase 22 — Portkey Open-Source AI Gateway & Semantic Cache**
-- [ ] **Phase 23 — NVIDIA NeMo Guardrails Engine (Input/Output/Colang Rails)**
-- [ ] **Phase 24 — Automated PII Masking & Data Sanitization Pipeline**
-- [ ] **Phase 25 — AI Red-Teaming & Adversarial Vulnerability Benchmark Suite**
-- [ ] **Phase 26 — Enterprise RBAC & Tamper-Evident Audit Logging**
-- [ ] **Phase 27 — Production Traffic Shadowing ("Golden Set Harvester")**
+- [x] **Universal Custom HTTP Webhook Provider (v3.0.1)**
+- [x] **Phase 22 — Portkey Open-Source AI Gateway & Semantic Cache (v3.1)**
+- [x] **Phase 23 — NVIDIA NeMo Guardrails Engine (Input/Output/Colang Rails) (v3.2)**
+- [x] **Phase 24 — Automated PII Masking & Data Sanitization Pipeline (v3.3)**
+- [x] **Phase 25 — AI Red-Teaming & Adversarial Vulnerability Benchmark Suite (v3.4)**
+- [ ] **Phase 26 — Enterprise RBAC & Tamper-Evident Audit Logging (v3.5)**
+- [ ] **Phase 27 — Production Traffic Shadowing ("Golden Set Harvester") (v3.6)**
 

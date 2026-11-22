@@ -155,13 +155,12 @@ Bridge live production monitoring with automated offline regression testing.
 
 | Phase | Milestone | Feature Description | Core Stack | Status |
 | :---: | :---: | :--- | :--- | :---: |
-| **Phase 22** | **v3.0.1** | **Universal Custom HTTP Webhook Provider** | `WebhookProvider`, Dot-Path Extraction, Dynamic Contexts | **COMPLETED** |
-| **Phase 23** | **v3.1** | **AI Gateway, Semantic Cache & Automated Failover** | Universal OpenAI Proxy, Sub-5ms Cache, Resilient Failover, Budgets | **COMPLETED** |
-| **Phase 24** | **v3.2** | **NVIDIA NeMo Guardrails Engine (Input/Output/Colang)** | `nemoguardrails`, Colang | **COMPLETED** |
-
-| **Phase 25** | **v3.3** | **Automated PII Masking & Data Sanitization Pipeline** | Python Regex Engine, Presidio/ONNX | **COMPLETED** |
-| **Phase 26** | **v3.4** | **AI Red-Teaming & Adversarial Benchmark Suite** | Automated Fuzzing, Security Evaluator | **COMPLETED** |
-| **Phase 27** | **v3.5** | **Enterprise RBAC & Tamper-Evident Audit Logging** | SQLAlchemy RBAC, Structured Audit Trail | Planned |
-| **Phase 28** | **v3.6** | **Production Traffic Shadowing ("Golden Set Harvester")** | Async Telemetry Gateway, Harvester UI | Planned |
+| **Foundation** | **v3.0.1** | **Universal Custom HTTP Webhook Provider** | `WebhookProvider`, Dot-Path Extraction, Dynamic Contexts | **COMPLETED** |
+| **Phase 22** | **v3.1** | **Portkey AI Gateway, Semantic Cache & Automated Failover** | Universal OpenAI Proxy, Sub-5ms Cache, Resilient Failover, Budgets | **COMPLETED** |
+| **Phase 23** | **v3.2** | **NVIDIA NeMo Guardrails Engine (Input/Output/Colang)** | `nemoguardrails`, Colang | **COMPLETED** |
+| **Phase 24** | **v3.3** | **Automated PII Masking & Data Sanitization Pipeline** | Python Regex Engine, Presidio/ONNX | **COMPLETED** |
+| **Phase 25** | **v3.4** | **AI Red-Teaming & Adversarial Benchmark Suite** | Automated Fuzzing, Security Evaluator | **COMPLETED** |
+| **Phase 26** | **v3.5** | **Enterprise RBAC & Tamper-Evident Audit Logging** | SQLAlchemy RBAC, Structured Audit Trail | **PLANNED** |
+| **Phase 27** | **v3.6** | **Production Traffic Shadowing ("Golden Set Harvester")** | Async Telemetry Gateway, Harvester UI | **PLANNED** |
 
 
