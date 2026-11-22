@@ -89,9 +89,12 @@ Powered by **LangSmith & LangChain** for diagnostic tracing, **Groq LPU Cloud** 
 
 ## 📚 Complete Documentation Index
 
+> 📖 **Primary Reference Manual:** [**`docs/master_ragbench_guide.md`**](docs/master_ragbench_guide.md) (or [**`docs/MASTER_PROJECT_GUIDE.md`**](docs/MASTER_PROJECT_GUIDE.md)) — **The Definitive End-to-End Enterprise Guide** covering executive value propositions, full system architecture, deep mathematical formulations, real-world case studies, interview pitch guides, and an **exhaustive phase-by-phase breakdown of all 28 phases (Phases 0 through 27)**.
+
 Every architecture decision, schema, API contract, and operational manual is fully documented inside the [`docs/`](docs/) directory:
 
 ### 🏛️ Architecture & System Design
+- [**`docs/master_ragbench_guide.md`**](docs/master_ragbench_guide.md) — **Master Architecture, Workflow & Production Engineering Guide (v1.0 to v3.0).**
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — System architecture, component relationships & data flow.
 - [`docs/ARCHITECTURE_DECISIONS.md`](docs/ARCHITECTURE_DECISIONS.md) — Architecture Decision Records (ADRs).
 - [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) — Mission statement, value proposition & core architecture.
@@ -191,27 +194,32 @@ pytest tests/ -v
 
 ---
 
-## 🔮 Future Milestones: Version 2.0 & Version 3.0
+## 🏆 Completed Milestones: Versions 1.0, 2.0 & 3.0 (Phases 0–27 100% Complete)
 
-### ⚡ Version 2.0 — Advanced Observability, Streaming & Agent Analytics
-1. **Strict Multi-Tenant Isolation:** Workspace-scoped datasets and isolated private sessions.
-2. **Interactive Visual Analytics & Pareto Frontier:** Cost/speed vs quality scatter plots and 6-axis metric radar charts.
-3. **Real-Time SSE Streaming:** Live progress bar with streaming token counts, latency, and sample evaluations.
-4. **Synthetic AI Test Dataset Generator:** Automatically generate multi-hop queries, contexts, and answers from raw documentation.
-5. **Drag-and-Drop Ingestion & Reports:** Import CSV / JSONL benchmark datasets and export executive PDF/Markdown summaries.
-6. **Visual Agent Trajectory Inspector:** Interactive thought-tool-action timeline graphs with automated anomaly detection.
+### ✅ Milestone v1.0 — Core Continuous Evaluation & CI/CD Regression Foundation (Phases 0–16)
+- **Automated CI/CD Quality Gates:** Compare candidate models against active golden baselines within strict $\pm2.0\%$ tolerance budgets.
+- **Unified Provider Abstraction:** Groq LPU (Llama 3.3), OpenAI (GPT-4o), Anthropic (Claude 3.5), Google Gemini, and Mock.
+- **Hybrid Evaluation Engine:** Sub-millisecond deterministic checks (Exact Match, Hit Rate, Latency) + LLM-as-a-Judge (Faithfulness, Relevancy, Hallucination).
+- **Multi-Tenant Security:** AES-256 Fernet encrypted BYOK vault with `[REDACTED_SECRET]` logging privacy.
 
-*Full architectural specs: [`docs/V2_ROADMAP.md`](docs/V2_ROADMAP.md).*
+### ✅ Milestone v2.0 — Advanced Observability, Streaming & Agent Analytics (Phases 17–21)
+- **Strict Multi-Tenant Isolation (Phase 16):** Workspace-scoped datasets and private sessions.
+- **Interactive Visual Analytics & Pareto Frontier (Phase 17):** 2D Cost/speed vs quality Pareto curve and 5-axis metric spider radar.
+- **Real-Time SSE Streaming (Phase 18):** Token-by-token live evaluation streaming with real-time latency and cost counters.
+- **Synthetic AI Test Dataset Generator (Phase 19):** Synthesize balanced factual, reasoning, and adversarial triplets from raw text.
+- **Drag-and-Drop Ingestion & Reports (Phase 20):** CSV/JSONL auto-delimiter sniffer and 1-click Markdown PR report export.
+- **Visual Agent Trajectory Flight Recorder (Phase 21):** Canonical argument signature hashing for infinite loop detection and path efficiency penalties.
 
-### 🛡️ Version 3.0 — Enterprise AI Security, Guardrails & LLM Gateway
-1. **NVIDIA NeMo Guardrails Engine:** Input rails, Colang topical steering, and hallucination interceptors.
-2. **Portkey Open-Source AI Gateway:** Multi-provider failover, smart retries, and zero-cost semantic caching.
-3. **Automated PII Masking Pipeline:** Pre-evaluation redaction of sensitive credentials, emails, and SSNs.
-4. **AI Red-Teaming & Adversarial Benchmark Suite:** Automated prompt injection and jailbreak resistance scoring.
-5. **Enterprise RBAC & Tamper-Evident Audit Logging:** Granular role permissions and compliance audit trails.
-6. **Production Traffic Shadowing:** "Golden Set Harvester" turning real-world failures into regression benchmarks.
+### ✅ Milestone v3.0 — Enterprise AI Security, Guardrails & LLM Gateway (Phases 22–27)
+- **Universal Custom Webhook Provider (v3.0.1):** Benchmark any proprietary REST API or custom pipeline.
+- **Portkey Open-Source AI Gateway & Semantic Cache (Phase 22 / v3.1):** Sub-5ms semantic cache hits (75%+ cost reduction), fallback provider routing, and workspace budget caps.
+- **NVIDIA NeMo Guardrails Engine (Phase 23 / v3.2):** Programmable input/output rails, Colang 2.x safety dialog policies, and jailbreak blocking.
+- **Automated PII Masking Pipeline (Phase 24 / v3.3):** Zero-leakage Presidio/regex redaction of SSNs, emails, credit cards, phones, and IPs (HIPAA/GDPR).
+- **AI Red-Teaming & Adversarial Benchmark Suite (Phase 25 / v3.4):** OWASP Top 10 automated attack injector, A–F Risk Grading, and 0–100 Security Posture Scores.
+- **Enterprise RBAC & Tamper-Evident Audit Logging (Phase 26 / v3.5):** Granular permissions (`ADMIN`, `EVALUATOR`, `VIEWER`) and cryptographic SHA-256 HMAC chained audit log (`prev_hash` $\to$ `record_hash`).
+- **Production Traffic Shadowing ("Golden Set Harvester") (Phase 27 / v3.6):** Passive traffic shadowing with heuristic anomaly detection (`GUARDRAIL_INTERCEPTED`, `HIGH_LATENCY`, `LOW_CONFIDENCE`, `EMPTY_RESPONSE`, `ERROR_OUTPUT`) and 1-click promotion to golden test benchmarks.
 
-*Full architectural specs: [`docs/V3_SECURITY_ROADMAP.md`](docs/V3_SECURITY_ROADMAP.md).*
+*Complete details and architecture available in [**`docs/master_ragbench_guide.md`**](docs/master_ragbench_guide.md).*
 
 ---
 
