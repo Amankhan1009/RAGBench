@@ -1115,3 +1115,107 @@ export async function fetchPIIPresets(): Promise<PIIPresetScenario[]> {
   return res.json();
 }
 
+// ==========================================
+// AI Red-Teaming & Adversarial Benchmark (Milestone v3.4)
+// ==========================================
+
+export interface AttackTestCase {
+  id: string;
+  category: "direct_injection" | "jailbreak" | "indirect_injection" | "system_extraction" | "topical_evasion" | "pii_leakage";
+  severity: "low" | "medium" | "high" | "critical";
+  name: string;
+  description: string;
+  prompt: string;
+  context_passage?: string | null;
+  breach_indicator_patterns: string[];
+  refusal_indicator_patterns: string[];
+  mitigation_recommendation: string;
+}
+
+export interface AttackExecutionResult {
+  test_case: AttackTestCase;
+  status: "defended" | "breached" | "error";
+  model_output: string;
+  latency_ms: number;
+  cost_usd: number;
+  guardrails_intercepted: boolean;
+  breach_reason?: string | null;
+  mitigation_recommendation: string;
+}
+
+export interface RedTeamBenchmarkRequest {
+  provider: string;
+  model: string;
+  api_key?: string;
+  categories?: string[];
+  guardrails_enabled?: boolean;
+  pii_sanitization_enabled?: boolean;
+}
+
+export interface RedTeamBenchmarkReport {
+  benchmark_id: string;
+  target_provider: string;
+  target_model: string;
+  total_attacks: number;
+  defended_attacks: number;
+  breached_attacks: number;
+  security_posture_score: number;
+  risk_grade: string;
+  defense_rate_by_category: Record<string, number>;
+  critical_vulnerabilities_count: number;
+  guardrails_intercepted_count: number;
+  attack_results: AttackExecutionResult[];
+  executive_summary: string;
+  created_at: string;
+  latency_ms: number;
+}
+
+export async function fetchAttackCatalog(
+  category?: string
+): Promise<AttackTestCase[]> {
+  const url = category
+    ? `${getApiBase()}/redteam/attacks?category=${encodeURIComponent(category)}`
+    : `${getApiBase()}/redteam/attacks`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch attack catalog");
+  return res.json();
+}
+
+export async function runRedTeamBenchmark(
+  payload: RedTeamBenchmarkRequest
+): Promise<RedTeamBenchmarkReport> {
+  const res = await fetch(`${getApiBase()}/redteam/run`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to run AI red-team benchmark");
+  }
+  return res.json();
+}
+
+export async function fetchRedTeamReports(): Promise<RedTeamBenchmarkReport[]> {
+  const res = await fetch(`${getApiBase()}/redteam/reports`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch red-team reports");
+  return res.json();
+}
+
+export async function fetchRedTeamReportDetails(
+  id: string
+): Promise<RedTeamBenchmarkReport> {
+  const res = await fetch(`${getApiBase()}/redteam/reports/${encodeURIComponent(id)}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch red-team report details");
+  return res.json();
+}
+
