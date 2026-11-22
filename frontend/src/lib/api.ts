@@ -1388,4 +1388,159 @@ export async function fetchAuditStats(): Promise<AuditStats> {
   return res.json();
 }
 
+// ==========================================
+// Phase 27: Production Traffic Shadowing & Golden Set Harvester (v3.6)
+// ==========================================
+
+export interface TrafficSample {
+  id: string;
+  workspace_id: string;
+  session_id: string | null;
+  user_query: string;
+  model_response: string | null;
+  retrieved_contexts: string[] | null;
+  latency_ms: number | null;
+  token_count: number | null;
+  cost_usd: number | null;
+  provider: string | null;
+  model: string | null;
+  guardrails_triggered: boolean;
+  guardrails_violations: string[] | null;
+  confidence_score: number | null;
+  is_flagged: boolean;
+  flag_reason: string | null;
+  is_promoted: boolean;
+  promoted_to_dataset_id: string | null;
+  sample_metadata: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface TrafficSampleListResponse {
+  items: TrafficSample[];
+  total: number;
+  page: number;
+  limit: number;
+  flagged_count: number;
+}
+
+export interface TrafficStats {
+  total_samples: number;
+  flagged_count: number;
+  anomaly_rate_percent: number;
+  promoted_count: number;
+  reasons_breakdown: Record<string, number>;
+  provider_breakdown: Record<string, number>;
+  avg_latency_ms: number;
+  p95_latency_ms: number;
+}
+
+export interface GoldenSetPromotionRequest {
+  sample_ids: string[];
+  target_dataset_id?: string;
+  new_dataset_name?: string;
+  new_dataset_description?: string;
+}
+
+export interface GoldenSetPromotionResponse {
+  dataset_id: string;
+  dataset_name: string;
+  promoted_count: number;
+  created_new: boolean;
+  promoted_sample_ids: string[];
+  message: string;
+}
+
+export async function fetchTrafficSamples(params?: {
+  flagged_only?: boolean;
+  flag_reason?: string;
+  promoted?: boolean;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<TrafficSampleListResponse> {
+  const query = new URLSearchParams();
+  if (params?.flagged_only) query.append("flagged_only", "true");
+  if (params?.flag_reason && params.flag_reason !== "ALL") query.append("flag_reason", params.flag_reason);
+  if (params?.promoted !== undefined) query.append("promoted", params.promoted ? "true" : "false");
+  if (params?.search) query.append("search", params.search);
+  if (params?.page) query.append("page", params.page.toString());
+  if (params?.limit) query.append("limit", params.limit.toString());
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  const res = await fetch(`${getApiBase()}/telemetry/samples${queryString}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch traffic samples");
+  }
+  return res.json();
+}
+
+export async function fetchTrafficStats(): Promise<TrafficStats> {
+  const res = await fetch(`${getApiBase()}/telemetry/stats`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch traffic statistics");
+  }
+  return res.json();
+}
+
+export async function promoteTrafficToGoldenSet(
+  payload: GoldenSetPromotionRequest
+): Promise<GoldenSetPromotionResponse> {
+  const res = await fetch(`${getApiBase()}/telemetry/promote`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to promote samples to Golden Set");
+  }
+  return res.json();
+}
+
+export async function ingestTrafficSample(payload: {
+  user_query: string;
+  model_response?: string;
+  retrieved_contexts?: string[];
+  latency_ms?: number;
+  token_count?: number;
+  cost_usd?: number;
+  provider?: string;
+  model?: string;
+  guardrails_triggered?: boolean;
+  guardrails_violations?: string[];
+  confidence_score?: number;
+  session_id?: string;
+}): Promise<TrafficSample> {
+  const res = await fetch(`${getApiBase()}/telemetry/sample`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to ingest traffic sample");
+  }
+  return res.json();
+}
+
+export async function deleteTrafficSample(sampleId: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/telemetry/samples/${encodeURIComponent(sampleId)}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to delete traffic sample");
+  }
+}
+
+
 

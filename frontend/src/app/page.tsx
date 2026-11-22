@@ -44,6 +44,7 @@ import GuardrailsView from "../components/GuardrailsView";
 import PIISanitizerView from "../components/PIISanitizerView";
 import RedTeamView from "../components/RedTeamView";
 import GovernanceView from "../components/GovernanceView";
+import TrafficHarvesterView from "../components/TrafficHarvesterView";
 
 
 function Spinner({ className = "" }: { className?: string }) {
@@ -91,7 +92,7 @@ export default function Dashboard() {
   const [wakeProgress, setWakeProgress] = useState<{ attempt: number; maxAttempts: number } | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
-  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "agent" | "gateway" | "guardrails" | "sanitizer" | "redteam" | "governance" | "api_keys">("experiments");
+  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "agent" | "gateway" | "guardrails" | "sanitizer" | "redteam" | "governance" | "harvester" | "api_keys">("experiments");
 
   const [datasetMode, setDatasetMode] = useState<"synthetic" | "ingest" | "manual">("synthetic");
   const [exportModalExp, setExportModalExp] = useState<Experiment | null>(null);
@@ -1141,7 +1142,7 @@ export default function Dashboard() {
 
       {/* Navigation Tabs */}
       <div className="max-w-7xl mx-auto mt-8 flex flex-wrap border-b border-slate-800 gap-8">
-        {(["experiments", "analytics", "regression", "datasets", "agent", "gateway", "guardrails", "sanitizer", "redteam", "governance", "api_keys"] as const).map((tab) => (
+        {(["experiments", "analytics", "regression", "datasets", "agent", "gateway", "guardrails", "sanitizer", "redteam", "governance", "harvester", "api_keys"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1214,6 +1215,14 @@ export default function Dashboard() {
                 <span>Governance &amp; RBAC</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30">
                   v3.5
+                </span>
+              </>
+            )}
+            {tab === "harvester" && (
+              <>
+                <span>Traffic Harvester</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+                  v3.6
                 </span>
               </>
             )}
@@ -1983,6 +1992,11 @@ export default function Dashboard() {
         {/* TAB: GOVERNANCE, RBAC & TAMPER-EVIDENT AUDIT (v3.5) */}
         {activeTab === "governance" && (
           <GovernanceView showToast={showToast} currentUser={currentUser} />
+        )}
+
+        {/* TAB: PRODUCTION TRAFFIC SHADOWING & GOLDEN SET HARVESTER (v3.6) */}
+        {activeTab === "harvester" && (
+          <TrafficHarvesterView showToast={showToast} />
         )}
 
         {/* TAB 4: API KEYS (BYOK) */}

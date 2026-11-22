@@ -17,6 +17,7 @@ from ragbench.api.v1.health import router as health_router
 from ragbench.api.v1.members import router as members_router
 from ragbench.api.v1.redteam import router as redteam_router
 from ragbench.api.v1.sanitizer import router as sanitizer_router
+from ragbench.api.v1.telemetry import router as telemetry_router
 from ragbench.core.config import settings
 from ragbench.core.logging import logger
 from ragbench.db.base import Base
@@ -129,6 +130,7 @@ app.include_router(gateway_router, prefix="/api/v1")
 app.include_router(guardrails_router, prefix="/api/v1")
 app.include_router(sanitizer_router, prefix="/api/v1")
 app.include_router(redteam_router, prefix="/api/v1")
+app.include_router(telemetry_router, prefix="/api/v1")
 
 
 

@@ -161,6 +161,6 @@ Bridge live production monitoring with automated offline regression testing.
 | **Phase 24** | **v3.3** | **Automated PII Masking & Data Sanitization Pipeline** | Python Regex Engine, Presidio/ONNX | **COMPLETED** |
 | **Phase 25** | **v3.4** | **AI Red-Teaming & Adversarial Benchmark Suite** | Automated Fuzzing, Security Evaluator | **COMPLETED** |
 | **Phase 26** | **v3.5** | **Enterprise RBAC & Tamper-Evident Audit Logging** | SQLAlchemy RBAC, Structured Audit Trail, Cryptographic HMAC Chaining | **COMPLETED** |
-| **Phase 27** | **v3.6** | **Production Traffic Shadowing ("Golden Set Harvester")** | Async Telemetry Gateway, Harvester UI | **PLANNED** |
+| **Phase 27** | **v3.6** | **Production Traffic Shadowing ("Golden Set Harvester")** | Async Telemetry Gateway, Rule Engine, 1-Click Golden Set Promotion | **COMPLETED** |
 
 
