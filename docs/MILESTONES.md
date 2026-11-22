@@ -39,7 +39,7 @@
 | Phase 23 — NVIDIA NeMo Guardrails Engine (Input/Output/Colang) | **COMPLETED (v3.2)** | 2026-11-21 |
 | Phase 24 — Automated PII Masking & Data Sanitization Pipeline | **COMPLETED (v3.3)** | 2026-11-21 |
 | Phase 25 — AI Red-Teaming & Adversarial Benchmark Suite | **COMPLETED (v3.4)** | 2026-11-22 |
-| Phase 26 — Enterprise RBAC & Tamper-Evident Audit Logging | **PLANNED (v3.5)** | Post-v2 |
+| Phase 26 — Enterprise RBAC & Tamper-Evident Audit Logging | **COMPLETED (v3.5)** | 2026-11-22 |
 | Phase 27 — Production Traffic Shadowing ("Golden Set Harvester") | **PLANNED (v3.6)** | Post-v2 |
 
 

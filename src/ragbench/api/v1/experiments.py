@@ -11,6 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ragbench.api.v1.auth import get_current_workspace
+from ragbench.core.audit import record_audit_event
+from ragbench.core.rbac import AuthContext, require_evaluator
 from ragbench.core.security import decrypt_api_key
 from ragbench.core.tracing import trace_async_run
 from ragbench.db.session import get_db, get_session_factory
@@ -523,13 +525,13 @@ async def get_experiment(
 @router.post("/{experiment_id}/set-baseline", response_model=ExperimentResponse)
 async def set_baseline(
     experiment_id: uuid.UUID,
-    workspace: Workspace = Depends(get_current_workspace),
+    ctx: AuthContext = Depends(require_evaluator),
     db: AsyncSession = Depends(get_db)
 ):
     """Mark experiment as the active baseline for its dataset within the active workspace."""
     stmt = select(Experiment).where(
         Experiment.id == experiment_id,
-        Experiment.workspace_id == workspace.id,
+        Experiment.workspace_id == ctx.workspace.id,
     )
     experiment = (await db.execute(stmt)).scalar_one_or_none()
     if not experiment:
@@ -537,7 +539,7 @@ async def set_baseline(
 
     clear_stmt = select(Experiment).where(
         Experiment.dataset_id == experiment.dataset_id,
-        Experiment.workspace_id == workspace.id,
+        Experiment.workspace_id == ctx.workspace.id,
         Experiment.is_baseline.is_(True),
     )
     existing_baselines = (await db.execute(clear_stmt)).scalars().all()
@@ -545,6 +547,20 @@ async def set_baseline(
         b.is_baseline = False
 
     experiment.is_baseline = True
+    await db.flush()
+
+    # Record tamper-evident audit log
+    await record_audit_event(
+        db,
+        workspace_id=ctx.workspace.id,
+        action="BASELINE_SET",
+        resource_type="experiment",
+        resource_id=str(experiment.id),
+        details={"experiment_name": experiment.name, "dataset_id": str(experiment.dataset_id)},
+        user_id=ctx.user_id,
+        user_email=ctx.user_email,
+        ip_address=ctx.client_ip,
+    )
     await db.commit()
     await db.refresh(experiment)
     return experiment
@@ -656,18 +672,33 @@ async def check_regression(
 @router.delete("/{experiment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_experiment(
     experiment_id: uuid.UUID,
-    workspace: Workspace = Depends(get_current_workspace),
+    ctx: AuthContext = Depends(require_evaluator),
     db: AsyncSession = Depends(get_db)
 ):
     """Delete an experiment run belonging to the active workspace."""
     stmt = select(Experiment).where(
         Experiment.id == experiment_id,
-        Experiment.workspace_id == workspace.id,
+        Experiment.workspace_id == ctx.workspace.id,
     )
     experiment = (await db.execute(stmt)).scalar_one_or_none()
     if not experiment:
         raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found in active workspace.")
+
+    exp_name = experiment.name
     await db.delete(experiment)
+
+    # Record tamper-evident audit log
+    await record_audit_event(
+        db,
+        workspace_id=ctx.workspace.id,
+        action="EXPERIMENT_DELETED",
+        resource_type="experiment",
+        resource_id=str(experiment_id),
+        details={"experiment_name": exp_name},
+        user_id=ctx.user_id,
+        user_email=ctx.user_email,
+        ip_address=ctx.client_ip,
+    )
     await db.commit()
     return None
 

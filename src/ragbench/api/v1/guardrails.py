@@ -2,8 +2,12 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ragbench.api.v1.auth import get_current_workspace
+from ragbench.core.audit import record_audit_event
+from ragbench.core.rbac import AuthContext, require_evaluator
+from ragbench.db.session import get_db
 from ragbench.guardrails.engine import guardrails_engine
 from ragbench.guardrails.schemas import (
     GuardrailCheckResult,
@@ -77,10 +81,23 @@ async def get_guardrail_policy(
 )
 async def update_guardrail_policy(
     payload: WorkspaceGuardrailPolicy,
-    workspace: Workspace = Depends(get_current_workspace),
+    ctx: AuthContext = Depends(require_evaluator),
+    db: AsyncSession = Depends(get_db),
 ):
     """Save updated guardrail policy for the current workspace."""
-    return guardrails_engine.update_policy(workspace.id, payload)
+    updated = guardrails_engine.update_policy(ctx.workspace.id, payload)
+    await record_audit_event(
+        db,
+        workspace_id=ctx.workspace.id,
+        action="GUARDRAIL_POLICY_UPDATED",
+        resource_type="guardrail",
+        details=payload.model_dump(),
+        user_id=ctx.user_id,
+        user_email=ctx.user_email,
+        ip_address=ctx.client_ip,
+    )
+    await db.commit()
+    return updated
 
 
 @router.get(

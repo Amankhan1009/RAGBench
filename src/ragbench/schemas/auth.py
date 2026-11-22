@@ -45,6 +45,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     name: Optional[str] = None
+    role: str = "admin"
     workspace_id: str
     workspace_name: str
     created_at: Optional[datetime] = None
@@ -56,4 +57,26 @@ class AuthTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class WorkspaceMemberInvite(BaseModel):
+    email: str = Field(..., description="Email of the new member to invite", min_length=5, max_length=255)
+    name: Optional[str] = Field(default=None, description="Optional display name")
+    role: str = Field(default="evaluator", description="Role: admin, evaluator, or viewer")
+    password: Optional[str] = Field(default=None, description="Optional initial password (defaults to secure random)")
+
+
+class WorkspaceMemberUpdate(BaseModel):
+    role: str = Field(..., description="Updated role: admin, evaluator, or viewer")
+
+
+class WorkspaceMemberResponse(BaseModel):
+    id: str
+    email: str
+    name: Optional[str] = None
+    role: str
+    workspace_id: str
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
 

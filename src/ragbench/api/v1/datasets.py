@@ -11,6 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ragbench.api.v1.auth import get_current_workspace
+from ragbench.core.audit import record_audit_event
+from ragbench.core.rbac import AuthContext, require_evaluator
 from ragbench.core.security import decrypt_api_key
 from ragbench.db.session import get_db
 from ragbench.models.dataset import Dataset, DatasetItem
@@ -35,7 +37,7 @@ router = APIRouter(prefix="/datasets", tags=["Datasets"])
 @router.post("", response_model=DatasetResponse, status_code=status.HTTP_201_CREATED)
 async def create_dataset(
     payload: DatasetCreate,
-    workspace: Workspace = Depends(get_current_workspace),
+    ctx: AuthContext = Depends(require_evaluator),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new evaluation dataset for the current workspace and optional initial items."""
@@ -43,7 +45,7 @@ async def create_dataset(
         name=payload.name,
         description=payload.description,
         version=payload.version,
-        workspace_id=workspace.id,
+        workspace_id=ctx.workspace.id,
     )
     db.add(dataset)
     await db.flush()
@@ -58,6 +60,20 @@ async def create_dataset(
         )
         db.add(item)
 
+    await db.flush()
+
+    # Record tamper-evident audit log
+    await record_audit_event(
+        db,
+        workspace_id=ctx.workspace.id,
+        action="DATASET_CREATED",
+        resource_type="dataset",
+        resource_id=str(dataset.id),
+        details={"name": dataset.name, "item_count": len(payload.items)},
+        user_id=ctx.user_id,
+        user_email=ctx.user_email,
+        ip_address=ctx.client_ip,
+    )
     await db.commit()
     await db.refresh(dataset)
     return dataset
@@ -140,13 +156,13 @@ async def bulk_add_items(
 @router.delete("/{dataset_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_dataset(
     dataset_id: uuid.UUID,
-    workspace: Workspace = Depends(get_current_workspace),
+    ctx: AuthContext = Depends(require_evaluator),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a dataset and all associated items belonging to the active workspace."""
     stmt = select(Dataset).where(
         Dataset.id == dataset_id,
-        Dataset.workspace_id == workspace.id,
+        Dataset.workspace_id == ctx.workspace.id,
     )
     result = await db.execute(stmt)
     dataset = result.scalar_one_or_none()
@@ -156,7 +172,21 @@ async def delete_dataset(
             detail=f"Dataset '{dataset_id}' not found in current workspace"
         )
 
+    dataset_name = dataset.name
     await db.delete(dataset)
+
+    # Record tamper-evident audit log
+    await record_audit_event(
+        db,
+        workspace_id=ctx.workspace.id,
+        action="DATASET_DELETED",
+        resource_type="dataset",
+        resource_id=str(dataset_id),
+        details={"name": dataset_name},
+        user_id=ctx.user_id,
+        user_email=ctx.user_email,
+        ip_address=ctx.client_ip,
+    )
     await db.commit()
     return None
 

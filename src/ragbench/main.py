@@ -7,12 +7,14 @@ from fastapi.responses import JSONResponse
 
 import ragbench.models
 from ragbench.api.v1.agent import router as agent_router
+from ragbench.api.v1.audit import router as audit_router
 from ragbench.api.v1.auth import router as auth_router
 from ragbench.api.v1.datasets import router as datasets_router
 from ragbench.api.v1.experiments import router as experiments_router
 from ragbench.api.v1.gateway import router as gateway_router
 from ragbench.api.v1.guardrails import router as guardrails_router
 from ragbench.api.v1.health import router as health_router
+from ragbench.api.v1.members import router as members_router
 from ragbench.api.v1.redteam import router as redteam_router
 from ragbench.api.v1.sanitizer import router as sanitizer_router
 from ragbench.core.config import settings
@@ -65,6 +67,14 @@ def _migrate_schema_sync(connection):
         except Exception as exc:
             logger.warning(f"[Migration] Drop workspaces_name_key: {exc}")
 
+    # 5. Check users table for role column
+    if "users" in inspector.get_table_names():
+        columns = [col["name"] for col in inspector.get_columns("users")]
+        if "role" not in columns:
+            logger.info("[Migration] Adding missing role to users table...")
+            connection.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'admin'"))
+            connection.execute(text("UPDATE users SET role = 'admin' WHERE role IS NULL"))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -110,6 +120,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(members_router, prefix="/api/v1")
+app.include_router(audit_router, prefix="/api/v1")
 app.include_router(datasets_router, prefix="/api/v1")
 app.include_router(experiments_router, prefix="/api/v1")
 app.include_router(agent_router, prefix="/api/v1")

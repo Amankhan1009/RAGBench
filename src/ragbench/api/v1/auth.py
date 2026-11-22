@@ -6,11 +6,18 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ragbench.core.audit import record_audit_event
 from ragbench.core.jwt import (
     create_access_token,
     decode_access_token,
     hash_password,
     verify_password,
+)
+from ragbench.core.rbac import (
+    AuthContext,
+    get_auth_context,
+    require_admin,
+    require_viewer,
 )
 from ragbench.core.security import encrypt_api_key
 from ragbench.db.session import get_db
@@ -31,43 +38,15 @@ router = APIRouter(prefix="/auth", tags=["Authentication & Multi-Tenancy"])
 
 
 async def get_current_workspace(
-    authorization: Optional[str] = Header(default=None, alias="Authorization"),
-    x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
-    db: AsyncSession = Depends(get_db),
+    ctx: AuthContext = Depends(get_auth_context),
 ) -> Workspace:
-    """Resolve active workspace via JWT Bearer token or X-API-Key header."""
-    # 1. Check Bearer token (JWT)
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split("Bearer ", 1)[1].strip()
-        try:
-            payload = decode_access_token(token)
-            workspace_id = payload.get("workspace_id")
-            if workspace_id:
-                ws = (await db.execute(select(Workspace).where(Workspace.id == workspace_id))).scalar_one_or_none()
-                if ws:
-                    return ws
-        except Exception:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired JWT token")
-
-    # 2. Check X-API-Key header
-    effective_key = x_api_key or "default-workspace-key"
-    res = await db.execute(select(Workspace).where(Workspace.api_key == effective_key))
-    workspace = res.scalar_one_or_none()
-
-    if not workspace:
-        if effective_key == "default-workspace-key":
-            workspace = Workspace(name="Default Workspace", api_key="default-workspace-key")
-            db.add(workspace)
-            await db.commit()
-            await db.refresh(workspace)
-        else:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-API-Key header")
-    return workspace
+    """Resolve active workspace via AuthContext (backwards compatible)."""
+    return ctx.workspace
 
 
 @router.post("/register", response_model=AuthTokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
-    """Register a new user and provision their personal workspace."""
+    """Register a new user and provision their personal workspace with Admin role."""
     existing_user = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
@@ -79,19 +58,48 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
     db.add(workspace)
     await db.flush()
 
-    # Create user with hashed password
+    # Create user with hashed password and default admin role
     user = User(
         email=payload.email,
         password_hash=hash_password(payload.password),
         name=payload.name,
+        role="admin",
         workspace_id=workspace.id,
     )
     db.add(user)
+    await db.flush()
+
+    # Record initial audit events
+    await record_audit_event(
+        db,
+        workspace_id=workspace.id,
+        action="WORKSPACE_CREATED",
+        resource_type="workspace",
+        resource_id=workspace.id,
+        details={"workspace_name": workspace.name},
+        user_id=user.id,
+        user_email=user.email,
+    )
+    await record_audit_event(
+        db,
+        workspace_id=workspace.id,
+        action="USER_REGISTERED",
+        resource_type="user",
+        resource_id=user.id,
+        details={"email": user.email, "role": user.role},
+        user_id=user.id,
+        user_email=user.email,
+    )
     await db.commit()
     await db.refresh(user)
     await db.refresh(workspace)
 
-    token = create_access_token({"sub": user.id, "email": user.email, "workspace_id": workspace.id})
+    token = create_access_token({
+        "sub": user.id,
+        "email": user.email,
+        "workspace_id": workspace.id,
+        "role": user.role,
+    })
     return AuthTokenResponse(
         access_token=token,
         token_type="bearer",
@@ -99,6 +107,7 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
             id=user.id,
             email=user.email,
             name=user.name,
+            role=user.role,
             workspace_id=workspace.id,
             workspace_name=workspace.name,
             created_at=user.created_at,
@@ -114,7 +123,12 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     workspace = (await db.execute(select(Workspace).where(Workspace.id == user.workspace_id))).scalar_one()
-    token = create_access_token({"sub": user.id, "email": user.email, "workspace_id": workspace.id})
+    token = create_access_token({
+        "sub": user.id,
+        "email": user.email,
+        "workspace_id": workspace.id,
+        "role": user.role or "admin",
+    })
 
     return AuthTokenResponse(
         access_token=token,
@@ -123,6 +137,7 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
             id=user.id,
             email=user.email,
             name=user.name,
+            role=user.role or "admin",
             workspace_id=workspace.id,
             workspace_name=workspace.name,
             created_at=user.created_at,
@@ -148,6 +163,7 @@ async def get_me(
         id=user.id,
         email=user.email,
         name=user.name,
+        role=user.role or "admin",
         workspace_id=workspace.id,
         workspace_name=workspace.name,
         created_at=user.created_at,
@@ -175,14 +191,14 @@ async def create_workspace(
 @router.post("/keys", response_model=ApiKeyMetadata, status_code=status.HTTP_201_CREATED)
 async def register_byok_key(
     payload: ApiKeyRegister,
-    workspace: Workspace = Depends(get_current_workspace),
+    ctx: AuthContext = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Register and Fernet-encrypt a BYOK cloud provider API key for the active workspace."""
+    """Register and Fernet-encrypt a BYOK cloud provider API key for the active workspace (Admin only)."""
     encrypted = encrypt_api_key(payload.api_key)
 
     stmt = select(WorkspaceApiKey).where(
-        WorkspaceApiKey.workspace_id == workspace.id,
+        WorkspaceApiKey.workspace_id == ctx.workspace.id,
         WorkspaceApiKey.provider == payload.provider.lower(),
     )
     existing = (await db.execute(stmt)).scalar_one_or_none()
@@ -192,14 +208,28 @@ async def register_byok_key(
         key_record = existing
     else:
         key_record = WorkspaceApiKey(
-            workspace_id=workspace.id,
+            workspace_id=ctx.workspace.id,
             provider=payload.provider.lower(),
             encrypted_key=encrypted,
         )
         db.add(key_record)
 
-    await db.commit()
+    await db.flush()
     await db.refresh(key_record)
+
+    # Record tamper-evident audit log
+    await record_audit_event(
+        db,
+        workspace_id=ctx.workspace.id,
+        action="API_KEY_REGISTERED",
+        resource_type="api_key",
+        resource_id=key_record.id,
+        details={"provider": payload.provider.lower()},
+        user_id=ctx.user_id,
+        user_email=ctx.user_email,
+        ip_address=ctx.client_ip,
+    )
+    await db.commit()
 
     preview = f"{payload.api_key[:6]}...{payload.api_key[-4:]}" if len(payload.api_key) > 10 else "***"
     return ApiKeyMetadata(
@@ -212,11 +242,11 @@ async def register_byok_key(
 
 @router.get("/keys", response_model=List[ApiKeyMetadata])
 async def list_byok_keys(
-    workspace: Workspace = Depends(get_current_workspace),
+    ctx: AuthContext = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ):
     """List all registered BYOK keys in the current workspace (metadata only, zero secret leakage)."""
-    stmt = select(WorkspaceApiKey).where(WorkspaceApiKey.workspace_id == workspace.id)
+    stmt = select(WorkspaceApiKey).where(WorkspaceApiKey.workspace_id == ctx.workspace.id)
     records = (await db.execute(stmt)).scalars().all()
 
     return [
@@ -229,3 +259,34 @@ async def list_byok_keys(
         for r in records
     ]
 
+
+@router.delete("/keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_byok_key(
+    key_id: str,
+    ctx: AuthContext = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a registered BYOK key (Admin only)."""
+    stmt = select(WorkspaceApiKey).where(
+        WorkspaceApiKey.workspace_id == ctx.workspace.id,
+        WorkspaceApiKey.id == key_id,
+    )
+    key_record = (await db.execute(stmt)).scalar_one_or_none()
+    if not key_record:
+        raise HTTPException(status_code=404, detail="API key not found")
+
+    provider = key_record.provider
+    await db.delete(key_record)
+
+    await record_audit_event(
+        db,
+        workspace_id=ctx.workspace.id,
+        action="API_KEY_DELETED",
+        resource_type="api_key",
+        resource_id=key_id,
+        details={"provider": provider},
+        user_id=ctx.user_id,
+        user_email=ctx.user_email,
+        ip_address=ctx.client_ip,
+    )
+    await db.commit()

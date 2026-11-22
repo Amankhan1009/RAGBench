@@ -2,8 +2,12 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ragbench.api.v1.auth import get_current_workspace
+from ragbench.core.audit import record_audit_event
+from ragbench.core.rbac import AuthContext, require_evaluator
+from ragbench.db.session import get_db
 from ragbench.models.workspace import Workspace
 from ragbench.redteam.attacks import get_attack_catalog
 from ragbench.redteam.engine import redteam_engine
@@ -26,10 +30,31 @@ router = APIRouter(prefix="/redteam", tags=["AI Red-Teaming & Security Posture"]
 )
 async def run_redteam_benchmark(
     payload: RedTeamBenchmarkRequest,
-    workspace: Workspace = Depends(get_current_workspace),
+    ctx: AuthContext = Depends(require_evaluator),
+    db: AsyncSession = Depends(get_db),
 ):
     """Execute adversarial fuzzing suite against target provider/model."""
-    return await redteam_engine.run_benchmark(workspace.id, payload)
+    report = await redteam_engine.run_benchmark(ctx.workspace.id, payload)
+    await record_audit_event(
+        db,
+        workspace_id=ctx.workspace.id,
+        action="REDTEAM_BENCHMARK_RUN",
+        resource_type="redteam",
+        resource_id=report.benchmark_id,
+        details={
+            "provider": payload.provider,
+            "security_score": report.security_posture_score,
+            "grade": report.risk_grade,
+            "total_attacks": report.total_attacks,
+            "defended_count": report.defended_attacks,
+            "breached_count": report.breached_attacks,
+        },
+        user_id=ctx.user_id,
+        user_email=ctx.user_email,
+        ip_address=ctx.client_ip,
+    )
+    await db.commit()
+    return report
 
 
 @router.get(

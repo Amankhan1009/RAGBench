@@ -1219,3 +1219,173 @@ export async function fetchRedTeamReportDetails(
   return res.json();
 }
 
+// ==========================================
+// Phase 26: Enterprise RBAC & Tamper-Evident Audit Logging (v3.5)
+// ==========================================
+
+export interface WorkspaceMember {
+  id: string;
+  email: string;
+  name: string | null;
+  role: "admin" | "evaluator" | "viewer" | string;
+  workspace_id: string;
+  created_at: string | null;
+}
+
+export interface AuditLogItem {
+  id: string;
+  workspace_id: string;
+  user_id: string | null;
+  user_email: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  details: Record<string, any> | null;
+  ip_address: string | null;
+  created_at: string;
+  prev_hash: string | null;
+  record_hash: string;
+}
+
+export interface AuditVerificationReport {
+  total_records: number;
+  verified_records: number;
+  is_valid: boolean;
+  tampered_records: Array<{
+    record_id: string;
+    index: number;
+    action: string;
+    prev_hash_matches: boolean;
+    hash_matches: boolean;
+    expected_hash: string;
+    recorded_hash: string;
+  }>;
+  chain_status: "SECURE" | "COMPROMISED" | string;
+  message: string;
+  verified_at: string;
+}
+
+export interface AuditStats {
+  total_events: number;
+  events_by_action: Record<string, number>;
+  events_by_resource: Record<string, number>;
+  unique_users: number;
+  latest_event_at: string | null;
+  chain_status: string;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function fetchWorkspaceMembers(): Promise<WorkspaceMember[]> {
+  const res = await fetch(`${getApiBase()}/workspaces/members`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch workspace members");
+  }
+  return res.json();
+}
+
+export async function addWorkspaceMember(payload: {
+  email: string;
+  name?: string;
+  role: string;
+  password?: string;
+}): Promise<WorkspaceMember> {
+  const res = await fetch(`${getApiBase()}/workspaces/members`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to add workspace member");
+  }
+  return res.json();
+}
+
+export async function updateWorkspaceMemberRole(
+  userId: string,
+  role: string
+): Promise<WorkspaceMember> {
+  const res = await fetch(`${getApiBase()}/workspaces/members/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ role }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to update member role");
+  }
+  return res.json();
+}
+
+export async function removeWorkspaceMember(userId: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/workspaces/members/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to remove workspace member");
+  }
+}
+
+export async function fetchAuditLogs(params?: {
+  action?: string;
+  resource_type?: string;
+  user_email?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AuditLogListResponse> {
+  const query = new URLSearchParams();
+  if (params?.action && params.action !== "ALL") query.append("action", params.action);
+  if (params?.resource_type) query.append("resource_type", params.resource_type);
+  if (params?.user_email) query.append("user_email", params.user_email);
+  if (params?.page) query.append("page", params.page.toString());
+  if (params?.limit) query.append("limit", params.limit.toString());
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  const res = await fetch(`${getApiBase()}/audit/logs${queryString}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch audit logs");
+  }
+  return res.json();
+}
+
+export async function verifyAuditIntegrity(): Promise<AuditVerificationReport> {
+  const res = await fetch(`${getApiBase()}/audit/verify`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to run cryptographic audit verification");
+  }
+  return res.json();
+}
+
+export async function fetchAuditStats(): Promise<AuditStats> {
+  const res = await fetch(`${getApiBase()}/audit/stats`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch audit statistics");
+  }
+  return res.json();
+}
+
+

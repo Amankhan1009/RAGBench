@@ -43,6 +43,7 @@ import AIGatewayView from "../components/AIGatewayView";
 import GuardrailsView from "../components/GuardrailsView";
 import PIISanitizerView from "../components/PIISanitizerView";
 import RedTeamView from "../components/RedTeamView";
+import GovernanceView from "../components/GovernanceView";
 
 
 function Spinner({ className = "" }: { className?: string }) {
@@ -90,7 +91,7 @@ export default function Dashboard() {
   const [wakeProgress, setWakeProgress] = useState<{ attempt: number; maxAttempts: number } | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
-  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "agent" | "gateway" | "guardrails" | "sanitizer" | "redteam" | "api_keys">("experiments");
+  const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "agent" | "gateway" | "guardrails" | "sanitizer" | "redteam" | "governance" | "api_keys">("experiments");
 
   const [datasetMode, setDatasetMode] = useState<"synthetic" | "ingest" | "manual">("synthetic");
   const [exportModalExp, setExportModalExp] = useState<Experiment | null>(null);
@@ -1140,7 +1141,7 @@ export default function Dashboard() {
 
       {/* Navigation Tabs */}
       <div className="max-w-7xl mx-auto mt-8 flex flex-wrap border-b border-slate-800 gap-8">
-        {(["experiments", "analytics", "regression", "datasets", "agent", "gateway", "guardrails", "sanitizer", "redteam", "api_keys"] as const).map((tab) => (
+        {(["experiments", "analytics", "regression", "datasets", "agent", "gateway", "guardrails", "sanitizer", "redteam", "governance", "api_keys"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1205,6 +1206,14 @@ export default function Dashboard() {
                 <span>AI Red-Teaming</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30">
                   v3.4
+                </span>
+              </>
+            )}
+            {tab === "governance" && (
+              <>
+                <span>Governance &amp; RBAC</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30">
+                  v3.5
                 </span>
               </>
             )}
@@ -1969,6 +1978,11 @@ export default function Dashboard() {
         {/* TAB: AI RED-TEAMING & SECURITY (v3.4) */}
         {activeTab === "redteam" && (
           <RedTeamView showToast={showToast} />
+        )}
+
+        {/* TAB: GOVERNANCE, RBAC & TAMPER-EVIDENT AUDIT (v3.5) */}
+        {activeTab === "governance" && (
+          <GovernanceView showToast={showToast} currentUser={currentUser} />
         )}
 
         {/* TAB 4: API KEYS (BYOK) */}
