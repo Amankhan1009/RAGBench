@@ -37,6 +37,8 @@ class ChatCompletionRequest(BaseModel):
     api_key: Optional[str] = Field(default=None, description="Optional direct BYOK key override")
     guardrails_enabled: bool = Field(default=True, description="Enforce pre-execution and post-execution AI guardrails")
     retrieved_contexts: Optional[List[str]] = Field(default=None, description="Optional retrieved RAG passages for output grounding verification")
+    pii_sanitization_enabled: bool = Field(default=False, description="Redact confidential PII before routing to cache or LLM")
+    pii_restore_response: bool = Field(default=True, description="Re-inject original PII values into final response")
 
 
 class ChatCompletionChoice(BaseModel):
@@ -68,6 +70,10 @@ class GatewayMetadata(BaseModel):
     guardrails_blocked: bool = Field(default=False, description="Whether request was blocked by guardrails")
     guardrails_violations: List[str] = Field(default_factory=list, description="List of detected policy violations")
     guardrails_latency_ms: float = Field(default=0.0, description="Guardrails inspection latency in ms")
+    pii_sanitized: bool = Field(default=False, description="Whether prompt PII sanitization was performed")
+    pii_entities_masked_count: int = Field(default=0, description="Count of sensitive PII entities masked")
+    pii_entities_detected: List[str] = Field(default_factory=list, description="Types of PII entities masked")
+    pii_latency_ms: float = Field(default=0.0, description="PII sanitization duration in ms")
 
 
 class ChatCompletionResponse(BaseModel):

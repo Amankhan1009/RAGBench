@@ -23,6 +23,7 @@ from ragbench.gateway.schemas import (
 )
 from ragbench.guardrails.engine import guardrails_engine
 from ragbench.models.workspace import Workspace
+from ragbench.sanitizer.engine import pii_sanitizer
 
 router = APIRouter(prefix="/gateway", tags=["AI Gateway & Semantic Cache"])
 
@@ -59,7 +60,23 @@ async def create_chat_completion(
 
     prompt = _extract_prompt_from_messages(payload.messages)
 
-    # 2. Pre-Execution Guardrails (Input Injection, Jailbreaks, System Prompt Leak, Colang Topical Boundary)
+    # 2. Automated PII Masking & Data Sanitization (Pre-Execution Privacy)
+    pii_sanitized = False
+    pii_entities_masked_count = 0
+    pii_entities_detected: List[str] = []
+    pii_latency_ms = 0.0
+    token_map: dict = {}
+
+    if payload.pii_sanitization_enabled:
+        sanitization_res = pii_sanitizer.sanitize(prompt)
+        pii_sanitized = True
+        pii_entities_masked_count = len(sanitization_res.entities_found)
+        pii_entities_detected = list(sanitization_res.entities_count.keys())
+        pii_latency_ms = sanitization_res.latency_ms
+        token_map = sanitization_res.token_map
+        prompt = sanitization_res.sanitized_text
+
+    # 3. Pre-Execution Guardrails (Input Injection, Jailbreaks, System Prompt Leak, Colang Topical Boundary)
     guardrails_applied = False
     guardrails_violations: List[str] = []
     guardrails_latency_ms = 0.0
@@ -102,6 +119,10 @@ async def create_chat_completion(
                     guardrails_blocked=True,
                     guardrails_violations=guardrails_violations,
                     guardrails_latency_ms=round(guardrails_latency_ms, 2),
+                    pii_sanitized=pii_sanitized,
+                    pii_entities_masked_count=pii_entities_masked_count,
+                    pii_entities_detected=pii_entities_detected,
+                    pii_latency_ms=round(pii_latency_ms, 2),
                 ),
             )
 
@@ -129,6 +150,9 @@ async def create_chat_completion(
                     guardrails_violations.extend(output_verdict.violations)
                     if output_verdict.sanitized_text:
                         cached_text = output_verdict.sanitized_text
+
+            if payload.pii_sanitization_enabled and payload.pii_restore_response and token_map:
+                cached_text = pii_sanitizer.restore(cached_text, token_map).restored_text
 
             return ChatCompletionResponse(
                 model=cached_entry.model,
@@ -158,6 +182,10 @@ async def create_chat_completion(
                     guardrails_blocked=False,
                     guardrails_violations=guardrails_violations,
                     guardrails_latency_ms=round(guardrails_latency_ms, 2),
+                    pii_sanitized=pii_sanitized,
+                    pii_entities_masked_count=pii_entities_masked_count,
+                    pii_entities_detected=pii_entities_detected,
+                    pii_latency_ms=round(pii_latency_ms, 2),
                 ),
             )
 
@@ -225,6 +253,9 @@ async def create_chat_completion(
             if output_verdict.sanitized_text:
                 response_text = output_verdict.sanitized_text
 
+    if payload.pii_sanitization_enabled and payload.pii_restore_response and token_map:
+        response_text = pii_sanitizer.restore(response_text, token_map).restored_text
+
     return ChatCompletionResponse(
         model=payload.model,
         choices=[
@@ -253,6 +284,10 @@ async def create_chat_completion(
             guardrails_blocked=False,
             guardrails_violations=guardrails_violations,
             guardrails_latency_ms=round(guardrails_latency_ms, 2),
+            pii_sanitized=pii_sanitized,
+            pii_entities_masked_count=pii_entities_masked_count,
+            pii_entities_detected=pii_entities_detected,
+            pii_latency_ms=round(pii_latency_ms, 2),
         ),
     )
 

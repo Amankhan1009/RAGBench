@@ -159,7 +159,7 @@ Bridge live production monitoring with automated offline regression testing.
 | **Phase 23** | **v3.1** | **AI Gateway, Semantic Cache & Automated Failover** | Universal OpenAI Proxy, Sub-5ms Cache, Resilient Failover, Budgets | **COMPLETED** |
 | **Phase 24** | **v3.2** | **NVIDIA NeMo Guardrails Engine (Input/Output/Colang)** | `nemoguardrails`, Colang | **COMPLETED** |
 
-| **Phase 25** | **v3.3** | **Automated PII Masking & Data Sanitization Pipeline** | Python Regex Engine, Presidio/ONNX | Planned |
+| **Phase 25** | **v3.3** | **Automated PII Masking & Data Sanitization Pipeline** | Python Regex Engine, Presidio/ONNX | **COMPLETED** |
 | **Phase 26** | **v3.4** | **AI Red-Teaming & Adversarial Benchmark Suite** | Automated Fuzzing, Security Evaluator | Planned |
 | **Phase 27** | **v3.5** | **Enterprise RBAC & Tamper-Evident Audit Logging** | SQLAlchemy RBAC, Structured Audit Trail | Planned |
 | **Phase 28** | **v3.6** | **Production Traffic Shadowing ("Golden Set Harvester")** | Async Telemetry Gateway, Harvester UI | Planned |

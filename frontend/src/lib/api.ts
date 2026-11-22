@@ -747,6 +747,8 @@ export interface GatewayCompletionRequest {
   api_key?: string;
   guardrails_enabled?: boolean;
   retrieved_contexts?: string[];
+  pii_sanitization_enabled?: boolean;
+  pii_restore_response?: boolean;
 }
 
 export interface GatewayMetadata {
@@ -763,6 +765,10 @@ export interface GatewayMetadata {
   guardrails_blocked?: boolean;
   guardrails_violations?: string[];
   guardrails_latency_ms?: number;
+  pii_sanitized?: boolean;
+  pii_entities_masked_count?: number;
+  pii_entities_detected?: string[];
+  pii_latency_ms?: number;
 }
 
 export interface GatewayCompletionResponse {
@@ -976,6 +982,136 @@ export async function checkOutputRail(
     const error = await res.json().catch(() => ({}));
     throw new Error(error.detail || "Failed to verify output grounding with output rails");
   }
+  return res.json();
+}
+
+// ==========================================
+// Automated PII Masking & Data Sanitization (Milestone v3.3)
+// ==========================================
+
+export interface PIIEntityMatch {
+  entity_type: string;
+  text: string;
+  start: number;
+  end: number;
+  replacement: string;
+  confidence: number;
+}
+
+export interface PIISanitizerConfig {
+  strategy?: "token" | "redact" | "hash";
+  mask_email?: boolean;
+  mask_phone?: boolean;
+  mask_ssn?: boolean;
+  mask_credit_card?: boolean;
+  mask_api_key?: boolean;
+  mask_ip_address?: boolean;
+}
+
+export interface PIISanitizationResult {
+  original_text: string;
+  sanitized_text: string;
+  entities_found: PIIEntityMatch[];
+  entities_count: Record<string, number>;
+  token_map: Record<string, string>;
+  latency_ms: number;
+}
+
+export interface PIIRestoreResult {
+  restored_text: string;
+  tokens_restored_count: number;
+  latency_ms: number;
+}
+
+export interface PIILeakageCheckResult {
+  leaked: boolean;
+  leakage_score: number;
+  leaked_entities: PIIEntityMatch[];
+  total_context_pii_count: number;
+  total_leaked_count: number;
+  reason: string;
+  latency_ms: number;
+}
+
+export interface PIIPresetScenario {
+  id: string;
+  title: string;
+  description: string;
+  sample_text: string;
+  sample_context?: string | null;
+  expected_entities: string[];
+}
+
+export async function maskPII(
+  text: string,
+  config?: PIISanitizerConfig
+): Promise<PIISanitizationResult> {
+  const res = await fetch(`${getApiBase()}/sanitizer/mask`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ text, config }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to sanitize text PII");
+  }
+  return res.json();
+}
+
+export async function unmaskPII(
+  sanitizedText: string,
+  tokenMap: Record<string, string>
+): Promise<PIIRestoreResult> {
+  const res = await fetch(`${getApiBase()}/sanitizer/unmask`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ sanitized_text: sanitizedText, token_map: tokenMap }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to restore sanitized PII tokens");
+  }
+  return res.json();
+}
+
+export async function detectPII(
+  text: string,
+  config?: PIISanitizerConfig
+): Promise<PIIEntityMatch[]> {
+  const res = await fetch(`${getApiBase()}/sanitizer/detect`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ text, config }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to detect PII entities");
+  }
+  return res.json();
+}
+
+export async function evaluatePIILeakage(
+  contextChunks: string[],
+  generatedText: string
+): Promise<PIILeakageCheckResult> {
+  const res = await fetch(`${getApiBase()}/sanitizer/evaluate-leakage`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ context_chunks: contextChunks, generated_text: generatedText }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to audit PII leakage");
+  }
+  return res.json();
+}
+
+export async function fetchPIIPresets(): Promise<PIIPresetScenario[]> {
+  const res = await fetch(`${getApiBase()}/sanitizer/presets`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch PII presets");
   return res.json();
 }
 

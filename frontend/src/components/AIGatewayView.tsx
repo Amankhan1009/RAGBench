@@ -38,6 +38,7 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
   const [cacheEnabled, setCacheEnabled] = useState(true);
   const [similarityThreshold, setSimilarityThreshold] = useState(0.95);
   const [guardrailsEnabled, setGuardrailsEnabled] = useState(true);
+  const [piiEnabled, setPiiEnabled] = useState(false);
   const [maxTokens, setMaxTokens] = useState<number>(2500);
   const [sendingRequest, setSendingRequest] = useState(false);
 
@@ -125,6 +126,7 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
         cache_enabled: cacheEnabled,
         similarity_threshold: similarityThreshold,
         guardrails_enabled: guardrailsEnabled,
+        pii_sanitization_enabled: piiEnabled,
         max_tokens: maxTokens,
       });
 
@@ -350,6 +352,18 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                       <span>🛡️</span> NeMo Guardrails Shield
                     </span>
                   </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={piiEnabled}
+                      onChange={(e) => setPiiEnabled(e.target.checked)}
+                      className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
+                    />
+                    <span className="text-xs text-cyan-400 font-medium flex items-center gap-1">
+                      <span>🔒</span> Auto-Mask PII
+                    </span>
+                  </label>
                 </div>
 
                 {cacheEnabled && (
@@ -406,6 +420,12 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                         <span>🛡️</span> GUARDRAILS PASSED
                       </span>
                     ) : null}
+
+                    {gatewayResponse.gateway.pii_sanitized && (
+                      <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] px-2 py-0.5 rounded font-mono font-semibold flex items-center gap-1">
+                        <span>🔒</span> PII MASKED ({gatewayResponse.gateway.pii_entities_masked_count ?? 0})
+                      </span>
+                    )}
 
                     {gatewayResponse.gateway.cached ? (
                       <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] px-2 py-0.5 rounded font-mono font-bold flex items-center gap-1">
