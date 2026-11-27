@@ -9,7 +9,9 @@ import {
   setCustomApiUrl,
   fetchDatasets,
   createDataset,
+  deleteDataset,
   fetchExperiments,
+  deleteExperiment,
   runExperiment,
   streamExperiment,
   setBaseline,
@@ -20,6 +22,7 @@ import {
   removeToken,
   fetchApiKeys,
   registerApiKey,
+  deleteApiKey,
   ApiKeyMetadata,
   User,
   HealthStatus,
@@ -536,6 +539,46 @@ export default function Dashboard() {
       showToast(err instanceof Error ? err.message : "Dataset creation failed", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteDataset = async (datasetId: string, datasetName: string) => {
+    if (!window.confirm(`Delete dataset "${datasetName}" and all its evaluation items?`)) return;
+    showToast(`Deleting dataset "${datasetName}"...`, "loading");
+    try {
+      await deleteDataset(datasetId);
+      if (selectedDataset === datasetId) setSelectedDataset("");
+      if (inspectedDataset?.id === datasetId) setInspectedDataset(null);
+      await loadAll();
+      showToast(`Dataset "${datasetName}" deleted.`, "success");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to delete dataset", "error");
+    }
+  };
+
+  const handleDeleteExperiment = async (expId: string, expName: string) => {
+    if (!window.confirm(`Delete experiment run "${expName}"?`)) return;
+    showToast(`Deleting experiment "${expName}"...`, "loading");
+    try {
+      await deleteExperiment(expId);
+      if (selectedCandidateForCI === expId) setSelectedCandidateForCI("");
+      if (selectedCandidateForAnalytics === expId) setSelectedCandidateForAnalytics("");
+      await loadAll();
+      showToast(`Experiment "${expName}" deleted.`, "success");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to delete experiment", "error");
+    }
+  };
+
+  const handleDeleteApiKey = async (keyId: string, providerName: string) => {
+    if (!window.confirm(`Delete ${providerName.toUpperCase()} API key from vault?`)) return;
+    showToast(`Removing ${providerName} API key...`, "loading");
+    try {
+      await deleteApiKey(keyId);
+      await loadAll();
+      showToast(`${providerName.toUpperCase()} API key deleted.`, "success");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to delete API key", "error");
     }
   };
 
@@ -1572,6 +1615,15 @@ export default function Dashboard() {
                                 <span>📊</span>
                                 <span>Export</span>
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteExperiment(exp.id, exp.name)}
+                                disabled={isChecking || isSettingBase}
+                                className="inline-flex items-center justify-center px-2 py-1.5 bg-rose-950/50 hover:bg-rose-900/70 text-xs rounded-lg transition text-rose-300 hover:text-rose-100 border border-rose-500/30 disabled:opacity-50"
+                                title="Delete Experiment Run"
+                              >
+                                🗑️
+                              </button>
                             </td>
                           </tr>
                         );
@@ -1913,9 +1965,14 @@ export default function Dashboard() {
                               >
                                 👁️ View Content
                               </button>
-                              <span className="text-xs bg-slate-800/60 text-emerald-400 px-2 py-1 rounded">
-                                Ready
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDataset(d.id, d.name)}
+                                className="text-xs bg-rose-950/50 hover:bg-rose-900/70 text-rose-300 hover:text-rose-100 border border-rose-500/30 px-2.5 py-1.5 rounded-lg transition"
+                                title="Delete Dataset"
+                              >
+                                🗑️
+                              </button>
                             </div>
                           </div>
                         );
@@ -2020,6 +2077,14 @@ export default function Dashboard() {
                                 }`}
                               >
                                 {selectedDataset === d.id ? "Selected ✓" : "Select"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDataset(d.id, d.name)}
+                                className="text-xs px-1.5 py-0.5 rounded bg-rose-950/50 hover:bg-rose-900/70 text-rose-300 hover:text-rose-100 border border-rose-500/30 transition"
+                                title="Delete Dataset"
+                              >
+                                🗑️
                               </button>
                             </div>
                           </div>
@@ -2148,18 +2213,27 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-between items-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedDataset(inspectedDataset.id);
-                        setInspectedDataset(null);
-                        showToast(`Selected "${inspectedDataset.name}" for experiments`, "success");
-                      }}
-                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
-                    >
-                      Use This Dataset in Experiments
-                    </button>
+                  <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-between items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDataset(inspectedDataset.id);
+                          setInspectedDataset(null);
+                          showToast(`Selected "${inspectedDataset.name}" for experiments`, "success");
+                        }}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
+                      >
+                        Use This Dataset in Experiments
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDataset(inspectedDataset.id, inspectedDataset.name)}
+                        className="px-3 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-semibold transition"
+                      >
+                        🗑️ Delete Dataset
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setInspectedDataset(null)}
@@ -2342,8 +2416,15 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-900">
-                          <span>Encrypted AES-256</span>
-                          <span>{new Date(k.created_at).toLocaleDateString()}</span>
+                          <span>Encrypted AES-256 • {new Date(k.created_at).toLocaleDateString()}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteApiKey(k.id, k.provider)}
+                            className="px-2 py-1 rounded bg-rose-950/50 hover:bg-rose-900/70 text-rose-300 hover:text-rose-100 border border-rose-500/30 transition font-medium"
+                            title={`Delete ${k.provider} key`}
+                          >
+                            🗑️ Delete
+                          </button>
                         </div>
                       </div>
                     ))}

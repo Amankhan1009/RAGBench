@@ -1544,3 +1544,39 @@ export async function deleteTrafficSample(sampleId: string): Promise<void> {
 
 
 
+
+
+// ── Resource Deletion Helpers ──────────────────────────────────────────────
+
+export async function deleteDataset(datasetId: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/datasets/${datasetId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to delete dataset");
+  }
+}
+
+export async function deleteExperiment(experimentId: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/experiments/${experimentId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to delete experiment");
+  }
+}
+
+export async function deleteApiKey(keyId: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/auth/keys/${keyId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to delete API key");
+  }
+}
