@@ -1,8 +1,9 @@
 """Pydantic schemas for Production Traffic Shadowing and Golden Set Harvester."""
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class TrafficSampleIngest(BaseModel):
@@ -46,6 +47,15 @@ class TrafficSampleResponse(BaseModel):
     promoted_to_dataset_id: Optional[str] = None
     sample_metadata: Optional[Dict[str, Any]] = None
     created_at: datetime
+
+    @field_validator("id", "workspace_id", "promoted_to_dataset_id", mode="before")
+    @classmethod
+    def coerce_uuid_to_str(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, uuid.UUID):
+            return str(v)
+        return str(v)
 
     model_config = {"from_attributes": True}
 
