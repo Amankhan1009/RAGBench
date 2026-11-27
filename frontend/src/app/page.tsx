@@ -95,6 +95,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"experiments" | "analytics" | "regression" | "datasets" | "agent" | "gateway" | "guardrails" | "sanitizer" | "redteam" | "governance" | "harvester" | "api_keys">("experiments");
 
   const [datasetMode, setDatasetMode] = useState<"synthetic" | "ingest" | "manual">("synthetic");
+  const [inspectedDataset, setInspectedDataset] = useState<Dataset | null>(null);
+  const [datasetItemSearch, setDatasetItemSearch] = useState("");
   const [exportModalExp, setExportModalExp] = useState<Experiment | null>(null);
   const [analyticsData, setAnalyticsData] = useState<ParetoAnalyticsResponse | null>(null);
   const [selectedCandidateForAnalytics, setSelectedCandidateForAnalytics] = useState<string>("");
@@ -1875,19 +1877,49 @@ export default function Dashboard() {
                     <div className="text-slate-500 text-center py-12">No datasets created yet.</div>
                   ) : (
                     <div className="space-y-4">
-                      {datasets.map((d) => (
-                        <div key={d.id} className="p-4 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center">
-                          <div>
-                            <div className="font-medium text-slate-200">{d.name}</div>
-                            <div className="text-xs text-slate-500">
-                              ID: {d.id} | Version: v{d.version} | Items: {d.items?.length || 0}
+                      {datasets.map((d) => {
+                        const firstMeta = (d.items?.[0]?.item_metadata || d.items?.[0]?.metadata || {}) as Record<string, unknown>;
+                        const descLower = (d.description || "").toLowerCase();
+                        const nameLower = d.name.toLowerCase();
+                        const typeInfo =
+                          firstMeta.source === "shadow_telemetry" || descLower.includes("shadow") || descLower.includes("harvest")
+                            ? { label: "Golden Harvested", icon: "🌾", badge: "bg-amber-500/20 text-amber-300 border-amber-500/30" }
+                            : firstMeta.synthesized_by || firstMeta.difficulty || nameLower.includes("synthetic") || descLower.includes("synthesized")
+                            ? { label: "AI Synthetic", icon: "✨", badge: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" }
+                            : firstMeta.source === "ingest" || descLower.includes("ingested") || descLower.includes("csv") || descLower.includes("jsonl")
+                            ? { label: "Bulk Ingested", icon: "📁", badge: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" }
+                            : { label: "Manual", icon: "📝", badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" };
+                        return (
+                          <div key={d.id} className="p-4 bg-slate-950 border border-slate-800 rounded-lg flex flex-wrap justify-between items-center gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-slate-200">{d.name}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${typeInfo.badge}`}>
+                                  {typeInfo.icon} {typeInfo.label}
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-500 mt-1">
+                                ID: {d.id} | Version: v{d.version} | Items: {d.items?.length || 0}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDatasetItemSearch("");
+                                  setInspectedDataset(d);
+                                }}
+                                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg transition font-medium"
+                              >
+                                👁️ View Content
+                              </button>
+                              <span className="text-xs bg-slate-800/60 text-emerald-400 px-2 py-1 rounded">
+                                Ready
+                              </span>
                             </div>
                           </div>
-                          <span className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded">
-                            Ready
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1916,49 +1948,227 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {datasets.map((d) => (
-                      <div
-                        key={d.id}
-                        className={`p-4 bg-slate-950 border rounded-xl transition ${
-                          selectedDataset === d.id
-                            ? "border-indigo-500 ring-1 ring-indigo-500/50"
-                            : "border-slate-800 hover:border-slate-700"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="font-medium text-slate-200 text-sm truncate" title={d.name}>
-                            {d.name}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono shrink-0">
-                            v{d.version}
-                          </span>
+                    {datasets.map((d) => {
+                      const firstMeta = (d.items?.[0]?.item_metadata || d.items?.[0]?.metadata || {}) as Record<string, unknown>;
+                      const descLower = (d.description || "").toLowerCase();
+                      const nameLower = d.name.toLowerCase();
+                      const typeInfo =
+                        firstMeta.source === "shadow_telemetry" || descLower.includes("shadow") || descLower.includes("harvest")
+                          ? { label: "Golden Harvested", icon: "🌾", badge: "bg-amber-500/20 text-amber-300 border-amber-500/30" }
+                          : firstMeta.synthesized_by || firstMeta.difficulty || nameLower.includes("synthetic") || descLower.includes("synthesized")
+                          ? { label: "AI Synthetic", icon: "✨", badge: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" }
+                          : firstMeta.source === "ingest" || descLower.includes("ingested") || descLower.includes("csv") || descLower.includes("jsonl")
+                          ? { label: "Bulk Ingested", icon: "📁", badge: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" }
+                          : { label: "Manual", icon: "📝", badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" };
+                      return (
+                        <div
+                          key={d.id}
+                          className={`p-4 bg-slate-950 border rounded-xl transition flex flex-col justify-between ${
+                            selectedDataset === d.id
+                              ? "border-indigo-500 ring-1 ring-indigo-500/50"
+                              : "border-slate-800 hover:border-slate-700"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-medium text-slate-200 text-sm truncate" title={d.name}>
+                                {d.name}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono shrink-0">
+                                v{d.version}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${typeInfo.badge}`}>
+                                {typeInfo.icon} {typeInfo.label}
+                              </span>
+                              {typeof firstMeta.synthesized_by === "string" && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">
+                                  via {firstMeta.synthesized_by}
+                                </span>
+                              )}
+                            </div>
+                            {d.description && (
+                              <p className="text-xs text-slate-400 line-clamp-2 mt-2">
+                                {d.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-slate-500 mt-3 pt-2 border-t border-slate-800/80">
+                            <span>{d.items?.length || 0} sample(s)</span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDatasetItemSearch("");
+                                  setInspectedDataset(d);
+                                }}
+                                className="text-xs px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+                              >
+                                👁️ View
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDataset(d.id);
+                                  showToast(`Selected "${d.name}" for experiments`, "success");
+                                }}
+                                className={`text-xs px-2 py-0.5 rounded transition ${
+                                  selectedDataset === d.id
+                                    ? "bg-indigo-600/30 text-indigo-300 font-semibold"
+                                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                                }`}
+                              >
+                                {selectedDataset === d.id ? "Selected ✓" : "Select"}
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        {d.description && (
-                          <p className="text-xs text-slate-400 line-clamp-2 mt-1">
-                            {d.description}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between text-xs text-slate-500 mt-3 pt-2 border-t border-slate-800/80">
-                          <span>{d.items?.length || 0} sample(s)</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedDataset(d.id);
-                              showToast(`Selected "${d.name}" for experiments`, "success");
-                            }}
-                            className={`text-xs px-2 py-0.5 rounded transition ${
-                              selectedDataset === d.id
-                                ? "bg-indigo-600/30 text-indigo-300 font-semibold"
-                                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                            }`}
-                          >
-                            {selectedDataset === d.id ? "Selected ✓" : "Select"}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Dataset Content Inspector Modal */}
+            {inspectedDataset && (
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-700 w-full max-w-4xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+                  <div className="p-5 border-b border-slate-800 flex items-start justify-between gap-4 bg-slate-950/60">
+                    <div>
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h3 className="text-lg font-bold text-white">{inspectedDataset.name}</h3>
+                        <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono">
+                          v{inspectedDataset.version}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
+                          {inspectedDataset.items?.length || 0} items
+                        </span>
+                      </div>
+                      {inspectedDataset.description && (
+                        <p className="text-xs text-slate-400 mt-1">{inspectedDataset.description}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInspectedDataset(null)}
+                      className="text-slate-400 hover:text-white text-lg font-bold px-2 py-1 rounded-lg hover:bg-slate-800 transition"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="p-4 border-b border-slate-800 bg-slate-900/80 flex items-center gap-3">
+                    <input
+                      type="text"
+                      placeholder="Search queries, answers, or contexts..."
+                      value={datasetItemSearch}
+                      onChange={(e) => setDatasetItemSearch(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500 placeholder-slate-500"
+                    />
+                  </div>
+
+                  <div className="p-5 overflow-y-auto space-y-4 flex-1">
+                    {(!inspectedDataset.items || inspectedDataset.items.length === 0) ? (
+                      <div className="text-center py-12 text-slate-500 text-sm">
+                        This dataset has no evaluation items yet.
+                      </div>
+                    ) : (
+                      inspectedDataset.items
+                        .filter((item) => {
+                          if (!datasetItemSearch.trim()) return true;
+                          const q = datasetItemSearch.toLowerCase();
+                          return (
+                            item.query.toLowerCase().includes(q) ||
+                            (item.expected_output || "").toLowerCase().includes(q) ||
+                            JSON.stringify(item.contexts || item.context || []).toLowerCase().includes(q)
+                          );
+                        })
+                        .map((item, idx) => {
+                          const meta = (item.item_metadata || item.metadata || {}) as Record<string, unknown>;
+                          const ctxList = item.contexts || item.context || [];
+                          return (
+                            <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3 text-xs">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold">
+                                    #{idx + 1}
+                                  </span>
+                                  {typeof meta.difficulty === "string" && (
+                                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase font-semibold text-[10px]">
+                                      {meta.difficulty}
+                                    </span>
+                                  )}
+                                  {typeof meta.flag_reason === "string" && (
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase font-semibold text-[10px]">
+                                      {meta.flag_reason}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block mb-1">
+                                  Query / Prompt
+                                </span>
+                                <p className="text-slate-100 font-medium bg-slate-900/70 p-2.5 rounded-lg border border-slate-800/80">
+                                  {item.query}
+                                </p>
+                              </div>
+
+                              {item.expected_output && (
+                                <div>
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block mb-1">
+                                    Expected Output (Ground Truth)
+                                  </span>
+                                  <p className="text-emerald-200/90 bg-emerald-950/20 p-2.5 rounded-lg border border-emerald-500/20">
+                                    {item.expected_output}
+                                  </p>
+                                </div>
+                              )}
+
+                              {ctxList.length > 0 && (
+                                <div>
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block mb-1">
+                                    Reference Contexts ({ctxList.length})
+                                  </span>
+                                  <div className="space-y-1.5">
+                                    {ctxList.map((ctx, cIdx) => (
+                                      <p key={cIdx} className="text-slate-300 bg-slate-900/50 p-2 rounded-lg border border-slate-800/60 font-mono text-[11px]">
+                                        {ctx}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+
+                  <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-between items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedDataset(inspectedDataset.id);
+                        setInspectedDataset(null);
+                        showToast(`Selected "${inspectedDataset.name}" for experiments`, "success");
+                      }}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
+                    >
+                      Use This Dataset in Experiments
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInspectedDataset(null)}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

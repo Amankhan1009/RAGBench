@@ -308,7 +308,10 @@ CRITICAL INSTRUCTIONS:
    - "source_snippet": str (10-15 words excerpt from where context was sourced)
 """
 
-    gen_res = await provider.generate(synthesis_prompt)
+    gen_res = await provider.generate(
+        synthesis_prompt,
+        max_tokens=max(2500, payload.num_samples * 350),
+    )
     raw_output = gen_res.generated_text.strip()
 
     # Clean markdown fences if LLM wrapped in ```json
@@ -318,56 +321,98 @@ CRITICAL INSTRUCTIONS:
     elif "```" in cleaned:
         cleaned = cleaned.split("```")[1].split("```")[0].strip()
 
+    def _to_preview(entry: dict) -> SyntheticItemPreview:
+        contexts_val = entry.get("contexts", [])
+        if isinstance(contexts_val, str):
+            contexts_val = [contexts_val]
+        elif not isinstance(contexts_val, list):
+            contexts_val = [str(contexts_val)]
+        return SyntheticItemPreview(
+            query=entry.get("query", ""),
+            expected_output=entry.get("expected_output", ""),
+            contexts=contexts_val,
+            difficulty=entry.get("difficulty", "factual"),
+            source_snippet=entry.get("source_snippet"),
+        )
+
     items_list: List[SyntheticItemPreview] = []
     try:
         parsed_data = json.loads(cleaned)
+        # Support both [...] and {"items": [...]} / {"test_cases": [...]}
+        if isinstance(parsed_data, dict):
+            for key in ("items", "test_cases", "data", "samples", "questions"):
+                if isinstance(parsed_data.get(key), list):
+                    parsed_data = parsed_data[key]
+                    break
         if isinstance(parsed_data, list):
             for entry in parsed_data:
                 if isinstance(entry, dict) and "query" in entry:
-                    contexts_val = entry.get("contexts", [])
-                    if isinstance(contexts_val, str):
-                        contexts_val = [contexts_val]
-                    elif not isinstance(contexts_val, list):
-                        contexts_val = [str(contexts_val)]
-
-                    items_list.append(
-                        SyntheticItemPreview(
-                            query=entry.get("query", ""),
-                            expected_output=entry.get("expected_output", ""),
-                            contexts=contexts_val,
-                            difficulty=entry.get("difficulty", "factual"),
-                            source_snippet=entry.get("source_snippet"),
-                        )
-                    )
+                    items_list.append(_to_preview(entry))
     except Exception:
-        # Regex fallback to extract JSON objects if JSON was slightly malformed
-        matches = re.findall(r"\{[^{}]*\"query\"[^{}]*\}", cleaned)
-        for m in matches:
-            try:
-                obj = json.loads(m)
-                items_list.append(
-                    SyntheticItemPreview(
-                        query=obj.get("query", "Sample question"),
-                        expected_output=obj.get("expected_output", "Sample answer"),
-                        contexts=obj.get("contexts", [payload.raw_text[:200]]),
-                        difficulty=obj.get("difficulty", "factual"),
-                        source_snippet=obj.get("source_snippet"),
-                    )
-                )
-            except Exception:
+        # Balanced-brace scanner to recover complete JSON objects even from truncated arrays
+        start_idx = cleaned.find("[")
+        scan_text = cleaned[start_idx:] if start_idx != -1 else cleaned
+        depth = 0
+        obj_start = -1
+        in_string = False
+        escape_next = False
+        for i, ch in enumerate(scan_text):
+            if escape_next:
+                escape_next = False
                 continue
+            if ch == "\\" and in_string:
+                escape_next = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch == "{":
+                if depth == 0:
+                    obj_start = i
+                depth += 1
+            elif ch == "}" and depth > 0:
+                depth -= 1
+                if depth == 0 and obj_start != -1:
+                    chunk = scan_text[obj_start : i + 1]
+                    try:
+                        obj = json.loads(chunk)
+                        if isinstance(obj, dict) and "query" in obj:
+                            items_list.append(_to_preview(obj))
+                    except Exception:
+                        pass
+                    obj_start = -1
 
-    # If still empty due to unexpected model response, fallback to rule-based chunks
-    if not items_list:
-        paragraphs = [p.strip() for p in payload.raw_text.split("\n\n") if len(p.strip()) > 30]
-        for idx in range(min(payload.num_samples, len(paragraphs) or 1)):
-            p = paragraphs[idx] if paragraphs else payload.raw_text[:200]
+    # If still empty or fewer than requested due to unexpected model response, pad/fallback across sentences
+    if len(items_list) < payload.num_samples:
+        chunks = [p.strip() for p in payload.raw_text.split("\n\n") if len(p.strip()) > 30]
+        if len(chunks) < 2:
+            chunks = [s.strip() for s in payload.raw_text.split(".") if len(s.strip()) > 20]
+        if not chunks:
+            chunks = [payload.raw_text[:200]]
+
+        difficulties = ["factual", "reasoning", "adversarial"] if payload.difficulty == "mixed" else [payload.difficulty]
+        while len(items_list) < payload.num_samples:
+            idx = len(items_list)
+            p = chunks[idx % len(chunks)]
+            diff = difficulties[idx % len(difficulties)]
+            if diff == "adversarial":
+                q = f"What is the policy regarding unmentioned clause {idx + 1}?"
+                ans = "This detail is not specified in the provided source documentation."
+            elif diff == "reasoning":
+                q = f"How do the details in section {idx + 1} relate to user requirements?"
+                ans = p[:220]
+            else:
+                q = f"What key fact is stated regarding: {p[:50].strip()}...?"
+                ans = p[:220]
+
             items_list.append(
                 SyntheticItemPreview(
-                    query=f"What information is provided regarding section {idx + 1}?",
-                    expected_output=p[:180],
+                    query=q,
+                    expected_output=ans,
                     contexts=[p[:400]],
-                    difficulty="factual",
+                    difficulty=diff,
                     source_snippet=p[:60],
                 )
             )
