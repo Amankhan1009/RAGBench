@@ -1,7 +1,8 @@
 """Agent Trajectory Evaluation and Loop Inspector REST API endpoints."""
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from ragbench.api.v1.auth import get_current_workspace
@@ -224,3 +225,101 @@ async def evaluate_agent_trajectory(
         max_optimal_steps=payload.max_optimal_steps,
     )
     return report
+
+
+class AgentWebhookProbeRequest(BaseModel):
+    webhook_url: str = Field(..., min_length=1, description="Custom HTTP/HTTPS Agent or RAG endpoint URL")
+    goal: str = Field(..., min_length=1, description="Goal or user query to send to the endpoint")
+    api_key: Optional[str] = Field(default=None, description="Optional Bearer token")
+    expected_tools: Optional[List[str]] = Field(default=None, description="Expected tools list")
+    max_optimal_steps: int = Field(default=5)
+    loop_threshold: int = Field(default=2)
+
+
+class AgentWebhookProbeResponse(BaseModel):
+    trajectory: AgentTrajectory
+    report: AgentTrajectoryReport
+
+
+@router.post(
+    "/probe-webhook",
+    response_model=AgentWebhookProbeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Fetch & Evaluate Live Agent Trajectory from Custom Webhook",
+    description="Calls a custom agent/RAG webhook URL, parses returned steps (or wraps response as a 1-step trace), and runs loop & tool-coverage evaluation.",
+)
+async def probe_agent_webhook(
+    payload: AgentWebhookProbeRequest,
+    workspace: Workspace = Depends(get_current_workspace),
+):
+    """Invoke a live webhook endpoint and evaluate its agent trajectory."""
+    headers: Dict[str, str] = {"Content-Type": "application/json"}
+    if payload.api_key and payload.api_key.strip():
+        headers["Authorization"] = f"Bearer {payload.api_key.strip()}"
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                payload.webhook_url.strip(),
+                headers=headers,
+                json={"query": payload.goal, "goal": payload.goal, "prompt": payload.goal},
+            )
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=400, detail=f"Webhook returned HTTP {resp.status_code}: {resp.text[:200]}")
+        data: Any = resp.json()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to probe agent webhook: {str(exc)}")
+
+    # Support full trajectory JSON or standard RAG {answer, contexts} response
+    raw_steps = None
+    if isinstance(data, dict):
+        if isinstance(data.get("trajectory"), dict) and isinstance(data["trajectory"].get("steps"), list):
+            raw_steps = data["trajectory"]["steps"]
+        elif isinstance(data.get("steps"), list):
+            raw_steps = data["steps"]
+
+    if raw_steps:
+        steps = [
+            AgentStep(
+                step_number=s.get("step_number", idx + 1),
+                thought=s.get("thought", ""),
+                tool_call=ToolCall(**s["tool_call"]) if isinstance(s.get("tool_call"), dict) else None,
+                observation=s.get("observation"),
+            )
+            for idx, s in enumerate(raw_steps)
+        ]
+        final_resp = (
+            data.get("final_response")
+            or (data.get("trajectory") or {}).get("final_response")
+            or data.get("answer")
+            or ""
+        )
+        trajectory = AgentTrajectory(goal=payload.goal, steps=steps, final_response=str(final_resp), success=True)
+    else:
+        answer_text = ""
+        if isinstance(data, dict):
+            answer_text = str(data.get("answer") or data.get("response") or data.get("output") or data)
+        else:
+            answer_text = str(data)
+        trajectory = AgentTrajectory(
+            goal=payload.goal,
+            steps=[
+                AgentStep(
+                    step_number=1,
+                    thought=f"Invoked external webhook {payload.webhook_url} for goal.",
+                    tool_call=ToolCall(name="webhook_rag_call", arguments={"query": payload.goal}),
+                    observation=answer_text[:500],
+                )
+            ],
+            final_response=answer_text,
+            success=True,
+        )
+
+    evaluator = TrajectoryEvaluator(
+        max_optimal_steps=payload.max_optimal_steps,
+        loop_threshold=payload.loop_threshold,
+    )
+    report = evaluator.evaluate(trajectory, expected_tools=payload.expected_tools)
+    return AgentWebhookProbeResponse(trajectory=trajectory, report=report)

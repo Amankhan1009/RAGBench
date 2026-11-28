@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from ragbench.api.v1.auth import get_current_workspace
 from ragbench.models.workspace import Workspace
+from ragbench.providers.webhook import WebhookProvider
 from ragbench.sanitizer.engine import pii_sanitizer
 from ragbench.sanitizer.schemas import (
     PIIEntityMatch,
@@ -101,3 +102,60 @@ async def evaluate_leakage(
 async def get_pii_presets():
     """Return preset PII testing scenarios."""
     return pii_sanitizer.get_presets()
+
+
+class SanitizerWebhookProbeRequest(BaseModel):
+    webhook_url: str = Field(..., min_length=1, description="Custom HTTP/HTTPS RAG endpoint URL")
+    text: str = Field(..., min_length=1, description="Raw prompt containing PII to mask before sending to webhook")
+    api_key: Optional[str] = Field(default=None, description="Optional Bearer token for webhook")
+    config: Optional[PIISanitizerConfig] = Field(default=None, description="Custom PII masking preferences")
+
+
+class SanitizerWebhookProbeResponse(BaseModel):
+    sanitization: PIISanitizationResult
+    webhook_response: str
+    latency_ms: float
+    leakage_check: PIILeakageCheckResult
+    rehydrated_response: str
+
+
+@router.post(
+    "/probe-webhook",
+    response_model=SanitizerWebhookProbeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Mask PII, Forward to Live Custom Webhook, and Audit Response",
+    description="Sanitizes sensitive PII before sending to a custom webhook URL, checks the live response for PII leakage, and rehydrates tokens.",
+)
+async def probe_webhook_with_sanitizer(
+    payload: SanitizerWebhookProbeRequest,
+    workspace: Workspace = Depends(get_current_workspace),
+):
+    """End-to-end zero-leakage PII sanitization & auditing against a live webhook."""
+    from fastapi import HTTPException
+
+    sanitized = pii_sanitizer.sanitize(payload.text, payload.config)
+    try:
+        provider = WebhookProvider(
+            webhook_url=payload.webhook_url.strip(),
+            api_key=payload.api_key or "",
+        )
+        gen_res = await provider.generate(sanitized.sanitized_text)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Webhook call failed: {str(exc)}")
+
+    leakage_check = pii_sanitizer.check_rag_leakage(
+        context=payload.text,
+        response=gen_res.generated_text,
+    )
+    rehydrated_text = gen_res.generated_text
+    if sanitized.token_map:
+        restored = pii_sanitizer.restore(gen_res.generated_text, sanitized.token_map)
+        rehydrated_text = restored.restored_text
+
+    return SanitizerWebhookProbeResponse(
+        sanitization=sanitized,
+        webhook_response=gen_res.generated_text,
+        latency_ms=round(gen_res.latency_ms, 2),
+        leakage_check=leakage_check,
+        rehydrated_response=rehydrated_text,
+    )

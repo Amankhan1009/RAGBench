@@ -10,6 +10,8 @@ import {
   PIIPresetScenario,
   PIIRestoreResult,
   PIISanitizationResult,
+  probeSanitizerWebhook,
+  SanitizerWebhookProbeResponse,
   unmaskPII,
 } from "@/lib/api";
 
@@ -21,8 +23,16 @@ export default function PIISanitizerView({ showToast }: PIISanitizerViewProps) {
   const [presets, setPresets] = useState<PIIPresetScenario[]>([]);
   const [loadingPresets, setLoadingPresets] = useState(false);
 
-  // Active Tab: "masking" | "leakage"
-  const [activeTab, setActiveTab] = useState<"masking" | "leakage">("masking");
+  // Active Tab: "masking" | "leakage" | "webhook"
+  const [activeTab, setActiveTab] = useState<"masking" | "leakage" | "webhook">("masking");
+
+  // Live Webhook Probe State
+  const [webhookUrl, setWebhookUrl] = useState("http://localhost:8001/chat");
+  const [webhookText, setWebhookText] = useState(
+    "My email is alice.smith@example.com and phone is +1-555-234-5678. What is Acme Corp's refund policy?"
+  );
+  const [probingWebhook, setProbingWebhook] = useState(false);
+  const [webhookProbeResult, setWebhookProbeResult] = useState<SanitizerWebhookProbeResponse | null>(null);
 
   // Mode 1: Masking & Reversible Rehydration State
   const [inputText, setInputText] = useState(
@@ -310,6 +320,18 @@ export default function PIISanitizerView({ showToast }: PIISanitizerViewProps) {
         >
           <span>🔍</span>
           <span>RAG Context Leakage Inspector</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("webhook")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 ${
+            activeTab === "webhook"
+              ? "bg-cyan-600 text-white shadow-md shadow-cyan-600/30"
+              : "text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800"
+          }`}
+        >
+          <span>🌐</span>
+          <span>Live Webhook Probe</span>
         </button>
       </div>
 
@@ -748,6 +770,108 @@ export default function PIISanitizerView({ showToast }: PIISanitizerViewProps) {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: Live Webhook PII Probe */}
+      {activeTab === "webhook" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-6 p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <span>🌐</span>
+              <span>Zero-Leakage Live Webhook Probe</span>
+            </h3>
+            <p className="text-xs text-slate-400">
+              Masks sensitive PII before sending your prompt to the target Webhook URL, then audits its live response for PII leakage and rehydrates tokens.
+            </p>
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">Webhook Endpoint URL</label>
+              <input
+                type="url"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                placeholder="http://localhost:8001/chat"
+                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">Prompt Containing PII</label>
+              <textarea
+                rows={4}
+                value={webhookText}
+                onChange={(e) => setWebhookText(e.target.value)}
+                className="w-full rounded-xl bg-slate-950 border border-slate-800 p-3 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={probingWebhook || !webhookUrl.trim() || !webhookText.trim()}
+              onClick={async () => {
+                setProbingWebhook(true);
+                showToast("Masking PII and probing live webhook...", "loading");
+                try {
+                  const res = await probeSanitizerWebhook({
+                    webhook_url: webhookUrl,
+                    text: webhookText,
+                    config: {
+                      strategy,
+                      mask_email: maskEmail,
+                      mask_phone: maskPhone,
+                      mask_ssn: maskSsn,
+                      mask_credit_card: maskCreditCard,
+                      mask_api_key: maskApiKey,
+                      mask_ip_address: maskIpAddress,
+                    },
+                  });
+                  setWebhookProbeResult(res);
+                  showToast(`Masked ${res.sanitization.entities_found.length} PII entities & probed webhook in ${res.latency_ms}ms`, "success");
+                } catch (err: unknown) {
+                  showToast(err instanceof Error ? err.message : "Webhook probe failed", "error");
+                } finally {
+                  setProbingWebhook(false);
+                }
+              }}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition disabled:opacity-50"
+            >
+              {probingWebhook ? "Masking & Probing Webhook..." : "🔒 Mask PII → Probe Webhook → Audit Response"}
+            </button>
+          </div>
+
+          <div className="lg:col-span-6 p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 text-xs">
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-slate-800 pb-2">
+              Live Pipeline Inspection
+            </h3>
+            {webhookProbeResult ? (
+              <div className="space-y-3">
+                <div>
+                  <span className="text-[11px] font-semibold text-cyan-400 block mb-1">
+                    1. Sanitized Prompt Sent to Webhook ({webhookProbeResult.sanitization.entities_found.length} entities masked)
+                  </span>
+                  <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-slate-200">
+                    {webhookProbeResult.sanitization.sanitized_text}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-emerald-400 block mb-1">
+                    2. Webhook Response ({webhookProbeResult.latency_ms} ms)
+                  </span>
+                  <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200">
+                    {webhookProbeResult.webhook_response}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg border ${webhookProbeResult.leakage_check.leaked ? "bg-rose-950/30 border-rose-500/40 text-rose-300" : "bg-emerald-950/30 border-emerald-500/40 text-emerald-300"}`}>
+                  <strong>Leakage Audit:</strong>{" "}
+                  {webhookProbeResult.leakage_check.leaked
+                    ? `CRITICAL — ${webhookProbeResult.leakage_check.leaked_entities.length} PII entities leaked in response`
+                    : "CLEAN — Zero raw PII leaked in webhook response"}
+                </div>
+              </div>
+            ) : (
+              <div className="p-10 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                Enter your Webhook URL and click &ldquo;Mask PII → Probe Webhook&rdquo; to test live zero-leakage protection.
+              </div>
+            )}
           </div>
         </div>
       )}

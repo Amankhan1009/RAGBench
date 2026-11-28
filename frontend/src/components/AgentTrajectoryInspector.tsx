@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import {
   fetchAgentScenarios,
   evaluateAgentTrajectory,
+  probeAgentWebhook,
   AgentScenarioPreset,
   AgentTrajectory,
   AgentTrajectoryReport,
@@ -37,8 +38,10 @@ export default function AgentTrajectoryInspector({
   const [evaluating, setEvaluating] = useState<boolean>(false);
   const [newToolInput, setNewToolInput] = useState<string>("");
 
-  // Mode: Preset scenarios vs Custom JSON paste
-  const [inspectorMode, setInspectorMode] = useState<"preset" | "custom">("preset");
+  // Mode: Preset scenarios vs Custom JSON paste vs Live Webhook Probe
+  const [inspectorMode, setInspectorMode] = useState<"preset" | "custom" | "webhook">("preset");
+  const [webhookUrl, setWebhookUrl] = useState("http://localhost:8001/chat");
+  const [webhookGoal, setWebhookGoal] = useState("What is Acme Corp's refund policy?");
 
   const CUSTOM_TEMPLATES = {
     pass: {
@@ -349,7 +352,76 @@ export default function AgentTrajectoryInspector({
           >
             <span>🧪 Paste Custom Trajectory (JSON)</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setInspectorMode("webhook")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+              inspectorMode === "webhook"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-950"
+                : "bg-slate-800/80 text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>🌐 Probe Live Webhook</span>
+          </button>
         </div>
+
+        {/* ── LIVE WEBHOOK PROBE ── */}
+        {inspectorMode === "webhook" && (
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="text-xs text-slate-400">
+              Call any live Agent or RAG Webhook URL, extract its tool steps (or wrap its answer as a trace), and run loop &amp; tool-recall evaluation.
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Webhook Endpoint URL</label>
+                <input
+                  type="url"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  placeholder="http://localhost:8001/chat"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Agent Goal / Query</label>
+                <input
+                  type="text"
+                  value={webhookGoal}
+                  onChange={(e) => setWebhookGoal(e.target.value)}
+                  placeholder="Enter goal or question..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={evaluating || !webhookUrl.trim() || !webhookGoal.trim()}
+              onClick={async () => {
+                setEvaluating(true);
+                showToast("Probing live agent/RAG webhook...", "loading");
+                try {
+                  const res = await probeAgentWebhook({
+                    webhook_url: webhookUrl,
+                    goal: webhookGoal,
+                    expected_tools: expectedTools,
+                    max_optimal_steps: maxOptimalSteps,
+                    loop_threshold: loopThreshold,
+                  });
+                  setTrajectory(res.trajectory);
+                  setReport(res.report);
+                  showToast(`Evaluated live webhook trajectory (${res.report.passed ? "PASSED" : "BLOCKED"})`, res.report.passed ? "success" : "error");
+                } catch (err: unknown) {
+                  showToast(err instanceof Error ? err.message : "Agent webhook probe failed", "error");
+                } finally {
+                  setEvaluating(false);
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition disabled:opacity-50"
+            >
+              {evaluating ? "Probing Webhook..." : "🌐 Fetch & Evaluate Live Trace"}
+            </button>
+          </div>
+        )}
 
         {/* ── PRESET SCENARIO PICKER ── */}
         {inspectorMode === "preset" && (

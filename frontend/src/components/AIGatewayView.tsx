@@ -278,6 +278,7 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                       else if (e.target.value === "mock") setModel("mock-model");
                       else if (e.target.value === "openai") setModel("gpt-4o-mini");
                       else if (e.target.value === "google") setModel("gemini-1.5-flash");
+                      else if (e.target.value === "webhook") setModel("http://localhost:8001/chat");
                     }}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500"
                   >
@@ -285,15 +286,19 @@ export default function AIGatewayView({ showToast }: AIGatewayViewProps) {
                     <option value="mock">Mock Provider (Deterministic)</option>
                     <option value="openai">OpenAI (GPT-4o Mini)</option>
                     <option value="google">Google Gemini (1.5 Flash)</option>
+                    <option value="webhook">Custom HTTP Webhook</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Model Identifier</label>
+                  <label className="block text-xs text-slate-400 mb-1">
+                    {provider === "webhook" ? "Webhook Endpoint URL" : "Model Identifier"}
+                  </label>
                   <input
                     type="text"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
+                    placeholder={provider === "webhook" ? "https://your-rag-app.com/chat" : "e.g. openai/gpt-oss-120b"}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500 font-mono"
                   />
                 </div>

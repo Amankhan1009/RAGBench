@@ -2,6 +2,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +13,9 @@ from ragbench.core.rbac import (
     require_viewer,
 )
 from ragbench.db.session import get_db
+from ragbench.guardrails.engine import guardrails_engine
 from ragbench.models.traffic import ShadowTrafficSample
+from ragbench.providers.webhook import WebhookProvider
 from ragbench.schemas.traffic import (
     GoldenSetPromotionRequest,
     GoldenSetPromotionResponse,
@@ -240,3 +243,69 @@ async def delete_sample(
 
     await db.delete(sample)
     await db.commit()
+
+
+class TelemetryWebhookProbeRequest(BaseModel):
+    webhook_url: str = Field(..., min_length=1, description="Custom HTTP/HTTPS RAG endpoint URL to probe")
+    user_query: str = Field(..., min_length=1, description="User query to send to the live webhook")
+    api_key: Optional[str] = Field(default=None, description="Optional Bearer token")
+    confidence_score: Optional[float] = Field(default=None, description="Optional confidence override (0.0 - 1.0)")
+
+
+@router.post(
+    "/probe-webhook",
+    response_model=TrafficSampleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Probe Live Custom Webhook & Ingest Into Traffic Harvester",
+    description="Calls a custom HTTP webhook URL live, runs Guardrails + anomaly heuristics on its response, and records it in the Harvester feed.",
+)
+async def probe_webhook_to_harvester(
+    payload: TelemetryWebhookProbeRequest,
+    ctx: AuthContext = Depends(require_evaluator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Probe a live custom HTTP webhook and shadow its response into Golden Set Harvester."""
+    try:
+        provider = WebhookProvider(
+            webhook_url=payload.webhook_url.strip(),
+            api_key=payload.api_key or "",
+        )
+        gen_res = await provider.generate(payload.user_query)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Webhook call failed: {str(exc)}")
+
+    input_verdict = guardrails_engine.check_input(ctx.workspace.id, payload.user_query)
+    ingest_item = TrafficSampleIngest(
+        user_query=payload.user_query,
+        model_response=gen_res.generated_text,
+        retrieved_contexts=getattr(gen_res, "retrieved_contexts", None) or [],
+        latency_ms=round(gen_res.latency_ms, 2),
+        token_count=gen_res.total_tokens,
+        cost_usd=gen_res.cost_usd,
+        provider="webhook",
+        model=payload.webhook_url.strip(),
+        guardrails_triggered=not input_verdict.passed,
+        guardrails_violations=input_verdict.violations,
+        confidence_score=payload.confidence_score,
+    )
+    is_flagged, flag_reason = analyze_traffic_sample(ingest_item)
+    record = ShadowTrafficSample(
+        workspace_id=ctx.workspace.id,
+        user_query=ingest_item.user_query,
+        model_response=ingest_item.model_response,
+        retrieved_contexts=ingest_item.retrieved_contexts,
+        latency_ms=ingest_item.latency_ms,
+        token_count=ingest_item.token_count,
+        cost_usd=ingest_item.cost_usd,
+        provider=ingest_item.provider,
+        model=ingest_item.model,
+        guardrails_triggered=bool(ingest_item.guardrails_triggered),
+        guardrails_violations=ingest_item.guardrails_violations,
+        confidence_score=ingest_item.confidence_score,
+        is_flagged=is_flagged,
+        flag_reason=flag_reason,
+    )
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record

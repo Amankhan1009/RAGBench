@@ -1580,3 +1580,102 @@ export async function deleteApiKey(keyId: string): Promise<void> {
     throw new Error(err.detail || "Failed to delete API key");
   }
 }
+
+
+// ── Live Custom Webhook Probe Helpers (v3.6+) ──────────────────────────────
+
+export interface GuardrailWebhookProbeResponse {
+  input_verdict: GuardrailCheckResult;
+  blocked_at_input: boolean;
+  webhook_response?: string | null;
+  retrieved_contexts: string[];
+  latency_ms: number;
+  output_verdict?: GuardrailCheckResult | null;
+}
+
+export async function probeGuardrailWebhook(payload: {
+  webhook_url: string;
+  prompt: string;
+  api_key?: string;
+  bypass_input_block?: boolean;
+}): Promise<GuardrailWebhookProbeResponse> {
+  const res = await fetch(`${getApiBase()}/guardrails/probe-webhook`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Guardrails webhook probe failed");
+  }
+  return res.json();
+}
+
+export interface SanitizerWebhookProbeResponse {
+  sanitization: PIISanitizationResult;
+  webhook_response: string;
+  latency_ms: number;
+  leakage_check: PIILeakageCheckResult;
+  rehydrated_response: string;
+}
+
+export async function probeSanitizerWebhook(payload: {
+  webhook_url: string;
+  text: string;
+  api_key?: string;
+  config?: PIISanitizerConfig;
+}): Promise<SanitizerWebhookProbeResponse> {
+  const res = await fetch(`${getApiBase()}/sanitizer/probe-webhook`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "PII sanitizer webhook probe failed");
+  }
+  return res.json();
+}
+
+export async function probeTelemetryWebhook(payload: {
+  webhook_url: string;
+  user_query: string;
+  api_key?: string;
+  confidence_score?: number;
+}): Promise<TrafficSample> {
+  const res = await fetch(`${getApiBase()}/telemetry/probe-webhook`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Telemetry webhook probe failed");
+  }
+  return res.json();
+}
+
+export interface AgentWebhookProbeResponse {
+  trajectory: AgentTrajectory;
+  report: AgentTrajectoryReport;
+}
+
+export async function probeAgentWebhook(payload: {
+  webhook_url: string;
+  goal: string;
+  api_key?: string;
+  expected_tools?: string[];
+  max_optimal_steps?: number;
+  loop_threshold?: number;
+}): Promise<AgentWebhookProbeResponse> {
+  const res = await fetch(`${getApiBase()}/agent/probe-webhook`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Agent webhook probe failed");
+  }
+  return res.json();
+}

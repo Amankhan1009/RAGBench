@@ -1,7 +1,8 @@
 """REST API Endpoints for NVIDIA NeMo-compatible Guardrails, Input/Output Rails, and Colang Policies."""
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ragbench.api.v1.auth import get_current_workspace
@@ -17,6 +18,7 @@ from ragbench.guardrails.schemas import (
     WorkspaceGuardrailPolicy,
 )
 from ragbench.models.workspace import Workspace
+from ragbench.providers.webhook import WebhookProvider
 
 router = APIRouter(prefix="/guardrails", tags=["AI Security & Guardrails"])
 
@@ -110,3 +112,73 @@ async def update_guardrail_policy(
 async def get_preset_scenarios():
     """Return preset adversarial test cases."""
     return guardrails_engine.get_presets()
+
+
+class GuardrailWebhookProbeRequest(BaseModel):
+    webhook_url: str = Field(..., min_length=1, description="Custom HTTP/HTTPS RAG endpoint URL")
+    prompt: str = Field(..., min_length=1, description="Prompt to send through Input Rail -> Webhook -> Output Rail")
+    api_key: Optional[str] = Field(default=None, description="Optional Bearer token for webhook")
+    bypass_input_block: bool = Field(
+        default=False,
+        description="If true, still calls the webhook even if input rail flags the prompt, to test endpoint resilience",
+    )
+
+
+class GuardrailWebhookProbeResponse(BaseModel):
+    input_verdict: GuardrailCheckResult
+    blocked_at_input: bool
+    webhook_response: Optional[str] = None
+    retrieved_contexts: List[str] = []
+    latency_ms: float = 0.0
+    output_verdict: Optional[GuardrailCheckResult] = None
+
+
+@router.post(
+    "/probe-webhook",
+    response_model=GuardrailWebhookProbeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Probe Live Custom Webhook Through Input & Output Guardrails",
+    description="Runs pre-execution input rails, invokes the user's custom webhook URL, and runs post-execution RAG fact-checking on its live response.",
+)
+async def probe_webhook_with_guardrails(
+    payload: GuardrailWebhookProbeRequest,
+    workspace: Workspace = Depends(get_current_workspace),
+):
+    """End-to-end guardrail inspection against a live custom HTTP webhook."""
+    input_verdict = guardrails_engine.check_input(
+        workspace_id=workspace.id,
+        prompt=payload.prompt,
+    )
+    if not input_verdict.passed and not payload.bypass_input_block:
+        return GuardrailWebhookProbeResponse(
+            input_verdict=input_verdict,
+            blocked_at_input=True,
+            webhook_response=None,
+            retrieved_contexts=[],
+            latency_ms=0.0,
+            output_verdict=None,
+        )
+
+    try:
+        provider = WebhookProvider(
+            webhook_url=payload.webhook_url.strip(),
+            api_key=payload.api_key or "",
+        )
+        gen_res = await provider.generate(payload.prompt)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Webhook call failed: {str(exc)}")
+
+    contexts = getattr(gen_res, "retrieved_contexts", None) or []
+    output_verdict = guardrails_engine.check_output(
+        workspace_id=workspace.id,
+        response_text=gen_res.generated_text,
+        retrieved_contexts=contexts,
+    )
+    return GuardrailWebhookProbeResponse(
+        input_verdict=input_verdict,
+        blocked_at_input=False,
+        webhook_response=gen_res.generated_text,
+        retrieved_contexts=contexts,
+        latency_ms=round(gen_res.latency_ms, 2),
+        output_verdict=output_verdict,
+    )

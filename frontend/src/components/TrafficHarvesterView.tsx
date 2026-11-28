@@ -8,6 +8,7 @@ import {
   fetchTrafficStats,
   promoteTrafficToGoldenSet,
   ingestTrafficSample,
+  probeTelemetryWebhook,
   deleteTrafficSample,
   fetchDatasets,
   Dataset,
@@ -45,6 +46,8 @@ export default function TrafficHarvesterView({ showToast }: TrafficHarvesterView
   // Simulation modal state
   const [showSimulateModal, setShowSimulateModal] = useState(false);
   const [simulating, setSimulating] = useState(false);
+  const [probeWebhookUrl, setProbeWebhookUrl] = useState("http://localhost:8001/chat-buggy");
+  const [probeQuery, setProbeQuery] = useState("Where was Acme Corp founded?");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -797,7 +800,58 @@ export default function TrafficHarvesterView({ showToast }: TrafficHarvesterView
               </button>
             </div>
 
-            <div className="mt-5 flex justify-end">
+            {/* Live Custom Webhook Probe */}
+            <div className="mt-4 pt-4 border-t border-slate-800 space-y-2.5">
+              <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <span>🌐</span>
+                <span>Or Probe a Live Custom Webhook URL</span>
+              </div>
+              <input
+                type="url"
+                value={probeWebhookUrl}
+                onChange={(e) => setProbeWebhookUrl(e.target.value)}
+                placeholder="http://localhost:8001/chat-buggy"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono outline-none focus:border-amber-500"
+              />
+              <input
+                type="text"
+                value={probeQuery}
+                onChange={(e) => setProbeQuery(e.target.value)}
+                placeholder="User query to send..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-500"
+              />
+              <button
+                type="button"
+                disabled={simulating || !probeWebhookUrl.trim() || !probeQuery.trim()}
+                onClick={async () => {
+                  setSimulating(true);
+                  showToast("Probing live webhook & shadowing into Harvester...", "loading");
+                  try {
+                    const sample = await probeTelemetryWebhook({
+                      webhook_url: probeWebhookUrl,
+                      user_query: probeQuery,
+                    });
+                    setShowSimulateModal(false);
+                    await loadData();
+                    showToast(
+                      sample.is_flagged
+                        ? `Live webhook flagged (${sample.flag_reason}) & saved to Harvester!`
+                        : `Live webhook ingested (${sample.latency_ms}ms)`,
+                      sample.is_flagged ? "error" : "success"
+                    );
+                  } catch (err: unknown) {
+                    showToast(err instanceof Error ? err.message : "Webhook probe failed", "error");
+                  } finally {
+                    setSimulating(false);
+                  }
+                }}
+                className="w-full py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition disabled:opacity-50"
+              >
+                {simulating ? "Probing Webhook..." : "🌐 Probe Live Webhook & Ingest"}
+              </button>
+            </div>
+
+            <div className="mt-4 flex justify-end">
               <button
                 onClick={() => setShowSimulateModal(false)}
                 className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"

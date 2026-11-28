@@ -9,6 +9,8 @@ import {
   fetchGuardrailPresets,
   GuardrailCheckResult,
   GuardrailPresetScenario,
+  GuardrailWebhookProbeResponse,
+  probeGuardrailWebhook,
   updateGuardrailPolicy,
   WorkspaceGuardrailPolicy,
 } from "@/lib/api";
@@ -25,7 +27,14 @@ export default function GuardrailsView({ showToast }: GuardrailsViewProps) {
   const [savingPolicy, setSavingPolicy] = useState(false);
 
   // Playground Mode
-  const [activeTab, setActiveTab] = useState<"input" | "output">("input");
+  const [activeTab, setActiveTab] = useState<"input" | "output" | "webhook">("input");
+
+  // Live Webhook Probe State
+  const [webhookUrl, setWebhookUrl] = useState("http://localhost:8001/chat");
+  const [webhookPrompt, setWebhookPrompt] = useState("Where was Acme Corp founded?");
+  const [bypassInputBlock, setBypassInputBlock] = useState(false);
+  const [probingWebhook, setProbingWebhook] = useState(false);
+  const [webhookProbeResult, setWebhookProbeResult] = useState<GuardrailWebhookProbeResponse | null>(null);
 
   // Input Rails Testing State
   const [inputPrompt, setInputPrompt] = useState(
@@ -387,6 +396,18 @@ export default function GuardrailsView({ showToast }: GuardrailsViewProps) {
                   <span>🔍</span>
                   <span>Output Rails &amp; RAG Fact-Checking</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("webhook")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 ${
+                    activeTab === "webhook"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                      : "text-slate-400 hover:text-slate-200 bg-slate-950/60"
+                  }`}
+                >
+                  <span>🌐</span>
+                  <span>Live Webhook Probe</span>
+                </button>
               </div>
             </div>
 
@@ -529,6 +550,100 @@ export default function GuardrailsView({ showToast }: GuardrailsViewProps) {
                 </button>
               </div>
             )}
+
+            {/* TAB 3: Live Webhook End-to-End Guardrail Probe */}
+            {activeTab === "webhook" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Custom RAG / Chatbot Webhook URL
+                  </label>
+                  <input
+                    type="url"
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    placeholder="http://localhost:8001/chat or https://your-app.com/chat"
+                    className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Prompt to Probe (Input Rail → Live Webhook → Output Rail)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={webhookPrompt}
+                    onChange={(e) => setWebhookPrompt(e.target.value)}
+                    placeholder="Enter a normal or adversarial prompt..."
+                    className="w-full rounded-xl bg-slate-950 border border-slate-800 p-3 text-xs text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bypassInputBlock}
+                    onChange={(e) => setBypassInputBlock(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-900"
+                  />
+                  <span>Also forward blocked prompts to webhook (test endpoint&apos;s own defense)</span>
+                </label>
+                <button
+                  type="button"
+                  disabled={probingWebhook || !webhookUrl.trim() || !webhookPrompt.trim()}
+                  onClick={async () => {
+                    setProbingWebhook(true);
+                    showToast("Probing live webhook through Guardrails...", "loading");
+                    try {
+                      const res = await probeGuardrailWebhook({
+                        webhook_url: webhookUrl,
+                        prompt: webhookPrompt,
+                        bypass_input_block: bypassInputBlock,
+                      });
+                      setWebhookProbeResult(res);
+                      setInputVerdict(res.input_verdict);
+                      if (res.output_verdict) setOutputVerdict(res.output_verdict);
+                      showToast(
+                        res.blocked_at_input
+                          ? "Blocked at Input Rail before hitting webhook!"
+                          : `Live webhook responded in ${res.latency_ms}ms`,
+                        res.blocked_at_input ? "error" : "success"
+                      );
+                    } catch (err: unknown) {
+                      showToast(err instanceof Error ? err.message : "Webhook probe failed", "error");
+                    } finally {
+                      setProbingWebhook(false);
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <span>🌐</span>
+                  <span>{probingWebhook ? "Probing Live Webhook..." : "Run End-to-End Webhook Guardrail Probe"}</span>
+                </button>
+
+                {webhookProbeResult && (
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-300">Live Webhook Response</span>
+                      <span className="font-mono text-emerald-400">
+                        {webhookProbeResult.blocked_at_input ? "Blocked pre-execution" : `${webhookProbeResult.latency_ms} ms`}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 whitespace-pre-wrap">
+                      {webhookProbeResult.webhook_response || "(Request blocked by Input Rail before calling webhook)"}
+                    </div>
+                    {webhookProbeResult.output_verdict && (
+                      <div className="text-[11px] text-slate-400">
+                        Output Grounding Verdict:{" "}
+                        <strong className={webhookProbeResult.output_verdict.passed ? "text-emerald-400" : "text-amber-400"}>
+                          {webhookProbeResult.output_verdict.passed ? "PASSED" : "FLAGGED (HALLUCINATION)"}
+                        </strong>{" "}
+                        ({(webhookProbeResult.output_verdict.confidence * 100).toFixed(0)}% confidence)
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -543,15 +658,21 @@ export default function GuardrailsView({ showToast }: GuardrailsViewProps) {
                 </h3>
               </div>
               <span className="text-[10px] text-slate-500 font-mono">
-                {activeTab === "input" ? "Input / Colang Rail" : "Output Grounding Rail"}
+                {activeTab === "input" ? "Input / Colang Rail" : activeTab === "output" ? "Output Grounding Rail" : "Live Webhook Probe"}
               </span>
             </div>
 
             {/* Render Verdict Result */}
             {((activeTab === "input" && inputVerdict) ||
-              (activeTab === "output" && outputVerdict)) ? (
+              (activeTab === "output" && outputVerdict) ||
+              (activeTab === "webhook" && (webhookProbeResult?.output_verdict || webhookProbeResult?.input_verdict))) ? (
               (() => {
-                const verdict = activeTab === "input" ? inputVerdict! : outputVerdict!;
+                const verdict =
+                  activeTab === "input"
+                    ? inputVerdict!
+                    : activeTab === "output"
+                    ? outputVerdict!
+                    : (webhookProbeResult!.output_verdict || webhookProbeResult!.input_verdict)!;
                 return (
                   <div className="space-y-4 animate-fadeIn">
                     {/* Verdict Banner */}
