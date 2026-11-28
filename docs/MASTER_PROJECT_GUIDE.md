@@ -653,18 +653,22 @@ All routes are versioned under `/api/v1` and protected by JWT authentication or 
 | | `GET` | `/api/v1/experiments/{id}/export/{format}` | Export run to Markdown PR report, CSV, or JSONL. |
 | **Agent Trajectory** | `GET` | `/api/v1/agent/scenarios` | Fetch preset agent benchmark scenarios. |
 | | `POST` | `/api/v1/agent/evaluate-trajectory` | Inspect agent trajectory, loops, tool recall, & efficiency. |
-| **AI Gateway** | `POST` | `/api/v1/gateway/chat/completions` | Drop-in OpenAI-compatible gateway with semantic cache. |
+| | `POST` | `/api/v1/agent/probe-webhook` | Fetch & evaluate live agent/RAG trace from a custom Webhook URL. |
+| **AI Gateway** | `POST` | `/api/v1/gateway/chat/completions` | Drop-in OpenAI-compatible gateway with semantic cache (supports `webhook` provider). |
 | | `GET` | `/api/v1/gateway/config` | View workspace gateway configuration & budget caps. |
 | | `POST` | `/api/v1/gateway/config` | Update fallback routing, budget caps, & semantic cache settings. |
-| **NeMo Guardrails** | `POST` | `/api/v1/guardrails/validate` | Test input/output rails & Colang 2.x safety policies. |
-| | `GET` | `/api/v1/guardrails/rules` | Inspect active guardrail policies and containment flows. |
-| **PII Sanitizer** | `POST` | `/api/v1/pii/mask` | Sanitize text, masking emails, phones, SSNs, and credit cards. |
-| | `POST` | `/api/v1/pii/unmask` | Deanonymize cryptographic tokens back to original values. |
+| **NeMo Guardrails** | `POST` | `/api/v1/guardrails/check-input` | Run pre-execution input rails (jailbreaks, injections, system leaks). |
+| | `POST` | `/api/v1/guardrails/check-output` | Run post-execution RAG fact-checking on model outputs. |
+| | `POST` | `/api/v1/guardrails/probe-webhook` | Probe a live custom Webhook URL end-to-end through Input & Output Rails. |
+| **PII Sanitizer** | `POST` | `/api/v1/sanitizer/mask` | Sanitize text, masking emails, phones, SSNs, and credit cards. |
+| | `POST` | `/api/v1/sanitizer/unmask` | Deanonymize cryptographic tokens back to original values. |
+| | `POST` | `/api/v1/sanitizer/probe-webhook` | Mask PII, forward to a live custom Webhook URL, and audit response leakage. |
 | **Red-Teaming** | `GET` | `/api/v1/redteam/attacks` | List OWASP Top 10 adversarial attack test libraries. |
-| | `POST` | `/api/v1/redteam/run` | Execute adversarial red-team suite against candidate models. |
+| | `POST` | `/api/v1/redteam/run` | Execute adversarial red-team suite against candidate models or `webhook`. |
 | | `GET` | `/api/v1/redteam/reports` | Fetch historical security posture reports and risk grades. |
 | **Traffic Shadowing**| `POST` | `/api/v1/telemetry/sample` | Ingest live production shadow sample with live anomaly scan. |
 | | `POST` | `/api/v1/telemetry/batch` | Batch ingest up to 100 shadow samples in one call. |
+| | `POST` | `/api/v1/telemetry/probe-webhook` | Probe a live custom Webhook URL & shadow its response into Harvester. |
 | | `GET` | `/api/v1/telemetry/samples` | Query traffic samples with anomaly and promotion filters. |
 | | `GET` | `/api/v1/telemetry/stats` | Fetch executive telemetry metrics, anomaly rates, & latency. |
 | | `POST` | `/api/v1/telemetry/promote` | 1-Click promote selected anomalous samples to Golden Set. |
@@ -1095,3 +1099,32 @@ async def report_shadow_telemetry(query: str, response: str, contexts: list, lat
             }
         )
 ```
+
+
+---
+
+### 12.8 Universal Live Webhook Probing, Dataset Inspector & Dark/Light Mode (v3.6+)
+
+Every core subsystem in RAGBench now supports testing **any live external HTTP/HTTPS Webhook URL** directly from the dashboard:
+
+1. **AI Gateway (`Gateway v3.1`):**
+   - Select **`Custom HTTP Webhook`** in the **Primary Provider** dropdown and enter your endpoint URL (e.g., `https://your-rag-app.com/chat`).
+   - RAGBench wraps your endpoint with sub-5ms semantic caching, workspace monthly budget caps, and NeMo Guardrails protection.
+2. **NeMo Guardrails (`Guardrails v3.2`):**
+   - Click the **`🌐 Live Webhook Probe`** tab.
+   - Enter your Webhook URL + test prompt $\to$ click **`Run End-to-End Webhook Guardrail Probe`**.
+   - RAGBench runs pre-execution Input Rails, calls your live Webhook URL, and runs post-execution Output Fact-Checking on your app's live response.
+3. **PII Privacy (`PII Privacy v3.3`):**
+   - Click the **`🌐 Live Webhook Probe`** tab.
+   - Enter your Webhook URL + prompt containing PII $\to$ click **`🔒 Mask PII → Probe Webhook → Audit Response`**.
+   - RAGBench masks all PII before sending to your endpoint, checks your endpoint's response for leakage, and rehydrates tokens.
+4. **Agent Trajectories (`Agents v2.6`):**
+   - Click the **`🌐 Probe Live Webhook`** mode pill $\to$ enter your Agent/RAG Webhook URL + Goal $\to$ click **`🌐 Fetch & Evaluate Live Trace`**.
+5. **Traffic Harvester (`Harvester v3.6`):**
+   - Click **`🧪 Simulate Traffic Sample`** $\to$ use the **`🌐 Or Probe a Live Custom Webhook URL`** form at the bottom of the modal to call your live endpoint and auto-flag any latency/guardrail anomalies into the Harvester feed.
+6. **Dataset Management (`Datasets` Tab):**
+   - **Type Badges:** Every dataset automatically displays its origin badge (`✨ AI Synthetic`, `🌾 Golden Harvested`, `📁 Bulk Ingested`, or `📝 Manual`).
+   - **Content Inspector (`👁️ View`):** Click **View** on any dataset card to search and inspect all queries, expected outputs, contexts, and difficulty/flag tags.
+   - **Delete Controls (`🗑️`):** Delete buttons with confirmation dialogs are available on all Datasets, Experiments, BYOK API Keys, Team Members, and Shadow Traffic Samples.
+7. **Dark Mode & Light Mode:**
+   - Use the **`☀️ Light / 🌙 Dark`** toggle in the Landing Page header or Dashboard header to switch between the **Obsidian + Emerald/Teal** Dark theme and the **Alabaster + Emerald/Teal** Light theme.
