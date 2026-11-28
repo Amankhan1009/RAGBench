@@ -293,10 +293,13 @@ export default function VisualAnalytics({
               </p>
             </div>
             <button
+              type="button"
               onClick={onRefresh}
-              className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition self-start sm:self-auto"
+              disabled={loading}
+              className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition self-start sm:self-auto flex items-center gap-1.5 disabled:opacity-50"
             >
-              ↻ Refresh Plot
+              <span className={loading ? "inline-block animate-spin" : ""}>↻</span>
+              <span>{loading ? "Refreshing..." : "Refresh Plot"}</span>
             </button>
           </div>
 

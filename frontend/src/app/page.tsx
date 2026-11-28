@@ -1739,7 +1739,13 @@ export default function Dashboard() {
             onCandidateChange={handleCandidateAnalyticsChange}
             selectedPoint={selectedParetoPoint}
             onSelectPoint={(p) => setSelectedParetoPoint(p)}
-            onRefresh={() => handleCandidateAnalyticsChange(selectedCandidateForAnalytics)}
+            onRefresh={async () => {
+              showToast("Refreshing analytics & Pareto frontier...", "loading");
+              await handleCandidateAnalyticsChange(selectedCandidateForAnalytics);
+              const exps = await fetchExperiments().catch(() => null);
+              if (exps) setExperiments(exps);
+              showToast("Analytics & Pareto Frontier refreshed!", "success");
+            }}
             onNavigateToExperiments={() => setActiveTab("experiments")}
             experiments={experiments}
           />
