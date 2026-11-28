@@ -73,8 +73,13 @@ html[data-theme="light"] .bg-slate-900\/90,
 html[data-theme="light"] .bg-slate-900\/80,
 html[data-theme="light"] .bg-slate-900\/70,
 html[data-theme="light"] .bg-slate-900\/60 { background-color: rgba(255, 255, 255, 0.94) !important; }
-html[data-theme="light"] .bg-slate-800 { background-color: #e4e4e7 !important; }
-html[data-theme="light"] .bg-slate-800\/60 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-slate-800,
+html[data-theme="light"] [class*="bg-slate-800\/"] { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-slate-800\/60,
+html[data-theme="light"] .bg-slate-800\/80,
+html[data-theme="light"] .bg-slate-800\/40,
+html[data-theme="light"] .bg-slate-800\/30 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-slate-700 { background-color: #e4e4e7 !important; }
 html[data-theme="light"] .hover\:bg-slate-800:hover,
 html[data-theme="light"] .hover\:bg-slate-800\/60:hover,
 html[data-theme="light"] .hover\:bg-slate-700:hover { background-color: #e4e4e7 !important; }
@@ -93,15 +98,15 @@ html[data-theme="light"] .text-slate-300 { color: #3f3f46 !important; }
 html[data-theme="light"] .text-slate-400 { color: #52525b !important; }
 html[data-theme="light"] .text-slate-500 { color: #71717a !important; }
 
-/* Keep white text inside solid colored CTA buttons in Light Mode */
+/* Keep white text inside solid & gradient CTA buttons in Light Mode */
 html[data-theme="light"] button.bg-indigo-600,
+html[data-theme="light"] button.bg-indigo-600 *,
 html[data-theme="light"] button.bg-blue-600,
+html[data-theme="light"] button.bg-blue-600 *,
 html[data-theme="light"] button.bg-emerald-600,
-html[data-theme="light"] button[class*="from-emerald-600"],
-html[data-theme="light"] button[class*="from-teal-600"],
-html[data-theme="light"] button[class*="from-amber-600"],
-html[data-theme="light"] button[class*="from-purple-600"],
-html[data-theme="light"] button[class*="from-rose-600"],
+html[data-theme="light"] button.bg-emerald-600 *,
+html[data-theme="light"] button[class*="bg-gradient-to-"],
+html[data-theme="light"] button[class*="bg-gradient-to-"] *,
 html[data-theme="light"] .text-white-force {
   color: #ffffff !important;
 }
@@ -129,9 +134,20 @@ html[data-theme="light"] textarea {
   border-color: #d4d4d8 !important;
 }
 
-/* Light Mode: Override ALL dark hero gradient banners (slate-900 / *-950) without affecting -600 CTA buttons */
-html[data-theme="light"] [class*="bg-gradient-to-"][class*="slate-9"],
-html[data-theme="light"] [class*="bg-gradient-to-"][class*="-950"] {
+/* Light Mode: Override ONLY dark hero gradient div banners (never buttons or logos with shadow-*-950) */
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="from-slate-9"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="via-slate-9"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="to-slate-9"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="from-emerald-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="from-cyan-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="from-rose-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="from-amber-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="from-indigo-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="via-emerald-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="via-cyan-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="via-rose-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="via-amber-950"],
+html[data-theme="light"] div[class*="bg-gradient-to-"][class*="via-indigo-950"] {
   background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 55%, #f4f4f5 100%) !important;
   border-color: #d4d4d8 !important;
 }
