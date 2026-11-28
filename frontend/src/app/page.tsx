@@ -868,7 +868,7 @@ export default function Dashboard() {
 
   // ── MAIN AUTHENTICATED DASHBOARD ───────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 px-4 py-4 sm:px-6 sm:py-5 font-sans">
       {statusToast && (
         <div
           className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border text-sm backdrop-blur-md transition-all duration-300 ${
@@ -1092,20 +1092,20 @@ export default function Dashboard() {
       )}
 
       {/* Header */}
-      <header className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between pb-8 border-b border-slate-800 gap-4">
+      <header className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between pb-4 border-b border-slate-800/80 gap-3">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent tracking-tight">
             RAGBench Platform
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-0.5">
             Production-Grade LLM, RAG &amp; Agent Evaluation Platform
           </p>
         </div>
 
         {/* User Info & Actions */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Backend Status Pill */}
-          <div className="bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl text-xs flex items-center gap-2">
+          <div className="bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
             {backendStatus === "online" ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -1144,7 +1144,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-xl text-xs flex items-center gap-2.5">
+          <div className="bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span className="font-medium text-slate-200">{currentUser.email}</span>
             <span className="text-slate-600">|</span>
@@ -1153,7 +1153,7 @@ export default function Dashboard() {
 
           <button
             onClick={handleLogout}
-            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-xl text-xs transition"
+            className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-xs transition"
           >
             Logout
           </button>
@@ -1161,7 +1161,7 @@ export default function Dashboard() {
       </header>
 
       {errorMsg && (
-        <div className="max-w-7xl mx-auto mt-4 p-4 bg-rose-950/60 border border-rose-800 text-rose-200 rounded-lg text-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto mt-3 p-3 bg-rose-950/60 border border-rose-800 text-rose-200 rounded-lg text-xs flex flex-col md:flex-row md:items-center justify-between gap-2">
           <div>
             <span className="font-semibold">Backend Notice:</span> {errorMsg}
           </div>
@@ -1170,14 +1170,14 @@ export default function Dashboard() {
               <button
                 onClick={handleWakeUpBackend}
                 disabled={backendStatus === "waking"}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
               >
                 {backendStatus === "waking" ? "Waking Up..." : "⚡ Wake Up Backend"}
               </button>
             )}
             <button
               onClick={loadAll}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition"
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition"
             >
               ↻ Retry
             </button>
@@ -1185,111 +1185,88 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Navigation Tabs */}
-      <div className="max-w-7xl mx-auto mt-8 flex flex-wrap border-b border-slate-800 gap-8">
+      {/* Compact Navigation Pill Bar */}
+      <nav className="max-w-7xl mx-auto mt-4 bg-slate-900/70 border border-slate-800/80 rounded-xl p-1.5 flex flex-wrap items-center gap-1">
         {(["experiments", "analytics", "regression", "datasets", "agent", "gateway", "guardrails", "sanitizer", "redteam", "governance", "harvester", "api_keys"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`pb-3 text-sm font-medium transition capitalize flex items-center gap-2 ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === tab
-                ? "text-blue-400 border-b-2 border-blue-400"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent"
             }`}
           >
-            {tab === "experiments" && "Experiments & Runs"}
+            {tab === "experiments" && "Experiments"}
             {tab === "analytics" && (
               <>
-                <span>Analytics &amp; Pareto Frontier</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
-                  v2.0
-                </span>
+                <span>Analytics</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold">v2.0</span>
               </>
             )}
-            {tab === "regression" && "Regression & CI Gates"}
-            {tab === "datasets" && (
-              <>
-                <span>Datasets</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
-                  AI &amp; Ingestion
-                </span>
-              </>
-            )}
+            {tab === "regression" && "CI Gates"}
+            {tab === "datasets" && "Datasets"}
             {tab === "agent" && (
               <>
-                <span>Agent Trajectories</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
-                  v2.6
-                </span>
+                <span>Agents</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 font-semibold">v2.6</span>
               </>
             )}
             {tab === "gateway" && (
               <>
-                <span>AI Gateway</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
-                  v3.1
-                </span>
+                <span>Gateway</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-semibold">v3.1</span>
               </>
             )}
             {tab === "guardrails" && (
               <>
-                <span>AI Security &amp; Guardrails</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
-                  v3.2
-                </span>
+                <span>Guardrails</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-semibold">v3.2</span>
               </>
             )}
             {tab === "sanitizer" && (
               <>
-                <span>PII Sanitizer &amp; Privacy</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30">
-                  v3.3
-                </span>
+                <span>PII Privacy</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-semibold">v3.3</span>
               </>
             )}
             {tab === "redteam" && (
               <>
-                <span>AI Red-Teaming</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30">
-                  v3.4
-                </span>
+                <span>Red-Team</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-rose-500/20 text-rose-300 font-semibold">v3.4</span>
               </>
             )}
             {tab === "governance" && (
               <>
-                <span>Governance &amp; RBAC</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30">
-                  v3.5
-                </span>
+                <span>Governance</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-violet-500/20 text-violet-300 font-semibold">v3.5</span>
               </>
             )}
             {tab === "harvester" && (
               <>
-                <span>Traffic Harvester</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
-                  v3.6
-                </span>
+                <span>Harvester</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-semibold">v3.6</span>
               </>
             )}
             {tab === "api_keys" && (
               <>
-                <span>API Keys (BYOK)</span>
+                <span>API Keys</span>
                 {apiKeys.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">
-                    {apiKeys.length} active
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
+                    {apiKeys.length}
                   </span>
                 )}
               </>
             )}
           </button>
         ))}
-      </div>
+      </nav>
 
 
-      <main className="max-w-7xl mx-auto mt-8">
+      <main className="max-w-7xl mx-auto mt-5">
         {/* TAB 1: EXPERIMENTS */}
         {activeTab === "experiments" && (
-          <div className="space-y-8">
+          <div className="space-y-5">
             {(isStreaming || streamComplete || streamError || streamSamples.length > 0) && (
               <LiveEvaluationStream
                 startData={streamStart}
@@ -1302,10 +1279,10 @@ export default function Dashboard() {
               />
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-fit">
-              <h2 className="text-lg font-semibold mb-4 text-slate-200">Run New Evaluation</h2>
-              <form onSubmit={handleRunExperiment} className="space-y-4 text-sm">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-xl h-fit">
+              <h2 className="text-base font-semibold mb-3 text-slate-200">Run New Evaluation</h2>
+              <form onSubmit={handleRunExperiment} className="space-y-3 text-xs sm:text-sm">
                 <div>
                   <label className="block text-slate-400 mb-1">Experiment Name</label>
                   <input
@@ -1517,24 +1494,24 @@ export default function Dashboard() {
               </form>
             </div>
 
-            <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-xl">
-              <h2 className="text-lg font-semibold mb-4 text-slate-200">
+            <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-xl">
+              <h2 className="text-base font-semibold mb-3 text-slate-200">
                 Evaluation Runs ({experiments.length})
               </h2>
               {experiments.length === 0 ? (
-                <div className="text-slate-500 text-center py-12">No experiments executed yet.</div>
+                <div className="text-slate-500 text-center py-10 text-sm">No experiments executed yet.</div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400">
-                        <th className="pb-3">Experiment</th>
-                        <th className="pb-3">Provider / Model</th>
-                        <th className="pb-3">Metrics</th>
-                        <th className="pb-3 text-right">Actions</th>
+                        <th className="pb-2.5 pr-2">Experiment</th>
+                        <th className="pb-2.5 pr-2">Provider / Model</th>
+                        <th className="pb-2.5 pr-2">Metrics</th>
+                        <th className="pb-2.5 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-slate-800/80">
                       {experiments.map((exp) => {
                         const isChecking = checkingCI === exp.id;
                         const isSettingBase = settingBaseline === exp.id;
@@ -1547,83 +1524,71 @@ export default function Dashboard() {
                                 : "hover:bg-slate-950/40"
                             }`}
                           >
-                            <td className="py-4 font-medium text-slate-200">
-                              <div className="flex items-center gap-2">
+                            <td className="py-2.5 pr-2 font-medium text-slate-200">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span>{exp.name}</span>
                                 {exp.is_baseline && (
-                                  <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                                  <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] px-1.5 py-0.2 rounded-full font-semibold">
                                     Baseline
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs text-slate-500">{exp.id.slice(0, 8)}...</span>
+                              <span className="text-[11px] text-slate-500 font-mono">{exp.id.slice(0, 8)}</span>
                             </td>
-                            <td className="py-4 text-slate-300">
-                              <div>{exp.provider_name}</div>
-                              <span className="text-xs text-slate-500">{exp.model_name || "default"}</span>
+                            <td className="py-2.5 pr-2 text-slate-300">
+                              <div className="font-medium">{exp.provider_name}</div>
+                              <span className="text-[11px] text-slate-500">{exp.model_name || "default"}</span>
                             </td>
-                            <td className="py-4">
-                              <div className="flex flex-wrap gap-2 text-xs">
+                            <td className="py-2.5 pr-2">
+                              <div className="flex flex-wrap gap-1 text-[11px]">
                                 {Object.entries(exp.summary_metrics || {}).map(([k, v]) => (
-                                  <span key={k} className="bg-slate-950 border border-slate-800 px-2 py-1 rounded">
+                                  <span key={k} className="bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
                                     {k}: <strong className="text-slate-200">{Number(v).toFixed(2)}</strong>
                                   </span>
                                 ))}
                               </div>
                             </td>
-                            <td className="py-4 text-right space-x-2">
-                              {!exp.is_baseline && (
-                                <button
-                                  onClick={() => handleSetBaseline(exp.id, exp.name)}
-                                  disabled={isSettingBase || isChecking}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs rounded-lg transition disabled:opacity-50 text-slate-200 font-medium min-w-[110px] justify-center"
-                                >
-                                  {isSettingBase ? (
-                                    <>
-                                      <Spinner />
-                                      <span>Setting...</span>
-                                    </>
-                                  ) : (
-                                    "Set Baseline"
-                                  )}
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleCheckRegression(exp.id, exp.name)}
-                                disabled={isChecking || isSettingBase}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition font-medium min-w-[115px] justify-center text-white ${
-                                  isChecking
-                                    ? "bg-indigo-700 ring-2 ring-indigo-400 animate-pulse"
-                                    : "bg-indigo-600 hover:bg-indigo-500 shadow-sm shadow-indigo-500/20"
-                                } disabled:opacity-60`}
-                              >
-                                {isChecking ? (
-                                  <>
-                                    <Spinner />
-                                    <span>Checking CI...</span>
-                                  </>
-                                ) : (
-                                  "Check CI"
+                            <td className="py-2.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                                {!exp.is_baseline && (
+                                  <button
+                                    onClick={() => handleSetBaseline(exp.id, exp.name)}
+                                    disabled={isSettingBase || isChecking}
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-[11px] rounded-md transition disabled:opacity-50 text-slate-200 font-medium"
+                                    title="Set as Golden Baseline"
+                                  >
+                                    {isSettingBase ? <Spinner /> : "Baseline"}
+                                  </button>
                                 )}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setExportModalExp(exp)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs rounded-lg transition text-slate-300 hover:text-white font-medium border border-slate-700"
-                                title="Export Executive Summary & Execution Logs"
-                              >
-                                <span>📊</span>
-                                <span>Export</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteExperiment(exp.id, exp.name)}
-                                disabled={isChecking || isSettingBase}
-                                className="inline-flex items-center justify-center px-2 py-1.5 bg-rose-950/50 hover:bg-rose-900/70 text-xs rounded-lg transition text-rose-300 hover:text-rose-100 border border-rose-500/30 disabled:opacity-50"
-                                title="Delete Experiment Run"
-                              >
-                                🗑️
-                              </button>
+                                <button
+                                  onClick={() => handleCheckRegression(exp.id, exp.name)}
+                                  disabled={isChecking || isSettingBase}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md transition font-medium text-white ${
+                                    isChecking
+                                      ? "bg-indigo-700 ring-2 ring-indigo-400 animate-pulse"
+                                      : "bg-indigo-600 hover:bg-indigo-500 shadow-sm shadow-indigo-500/20"
+                                  } disabled:opacity-60`}
+                                >
+                                  {isChecking ? <Spinner /> : "Check CI"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setExportModalExp(exp)}
+                                  className="inline-flex items-center justify-center px-2 py-1 bg-slate-800 hover:bg-slate-700 text-[11px] rounded-md transition text-slate-300 hover:text-white border border-slate-700"
+                                  title="Export Executive Summary & Execution Logs"
+                                >
+                                  📊
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteExperiment(exp.id, exp.name)}
+                                  disabled={isChecking || isSettingBase}
+                                  className="inline-flex items-center justify-center px-2 py-1 bg-rose-950/50 hover:bg-rose-900/70 text-[11px] rounded-md transition text-rose-300 hover:text-rose-100 border border-rose-500/30 disabled:opacity-50"
+                                  title="Delete Experiment Run"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
