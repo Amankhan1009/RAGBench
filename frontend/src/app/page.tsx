@@ -89,6 +89,25 @@ export default function Dashboard() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // Theme state ("dark" | "light")
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("ragbench_theme") : null;
+    const initial = saved === "light" ? "light" : "dark";
+    setTheme(initial);
+    document.documentElement.setAttribute("data-theme", initial);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ragbench_theme", next);
+    }
+    document.documentElement.setAttribute("data-theme", next);
+  };
+
   // Core application state
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "sleeping" | "waking">("checking");
@@ -597,12 +616,18 @@ export default function Dashboard() {
   // ── LOGIN / REGISTER VIEW (UNAUTHENTICATED) ────────────────────────────────
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-950 relative overflow-hidden flex flex-col justify-between p-4 sm:p-8">
+        {/* Subtle Ambient Emerald/Teal Glow */}
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl" />
+          <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-teal-500/10 blur-3xl" />
+        </div>
+
         {statusToast && (
           <div
             className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border text-sm backdrop-blur-md transition-all duration-300 ${
               statusToast.type === "loading"
-                ? "bg-slate-900 border-indigo-500 text-indigo-200"
+                ? "bg-slate-900 border-emerald-500 text-emerald-200"
                 : statusToast.type === "success"
                 ? "bg-emerald-950 border-emerald-500 text-emerald-200"
                 : "bg-rose-950 border-rose-500 text-rose-200"
@@ -615,15 +640,97 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-              RAGBench Platform
-            </h1>
-            <p className="text-sm text-slate-400">
-              Sign in to access your multi-tenant evaluations &amp; datasets
-            </p>
+        {/* Top Navigation Strip */}
+        <div className="relative z-10 max-w-6xl w-full mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-emerald-950/30">
+              R
+            </div>
+            <span className="font-bold text-base tracking-tight text-slate-100">RAGBench</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold">
+              v3.6
+            </span>
           </div>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/40 text-xs font-medium text-slate-300 flex items-center gap-1.5 transition"
+            title="Switch Light / Dark Mode"
+          >
+            <span>{theme === "dark" ? "☀️" : "🌙"}</span>
+            <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+          </button>
+        </div>
+
+        {/* Main Split-Screen Hero + Auth */}
+        <div className="relative z-10 max-w-6xl w-full mx-auto my-auto py-8 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          {/* Left Hero Column */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Enterprise LLMOps, Guardrails &amp; CI/CD Regression</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight text-slate-100">
+              Ship Reliable AI,{" "}
+              <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
+                Not Vibes.
+              </span>
+            </h1>
+
+            <p className="text-sm sm:text-base text-slate-400 max-w-xl leading-relaxed">
+              Benchmark your RAG pipelines, block prompt regressions in CI/CD, stop infinite agent loops, sanitize PII in sub-millisecond time, and harvest live production anomalies into Golden Sets.
+            </p>
+
+            {/* 6 Compact Feature Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+              {[
+                { icon: "⚡", title: "AI Gateway", desc: "Sub-5ms semantic cache" },
+                { icon: "🛡️", title: "NeMo Guardrails", desc: "0.1ms jailbreak shield" },
+                { icon: "🔒", title: "PII Sanitizer", desc: "Zero-leakage masking" },
+                { icon: "💥", title: "Red-Teaming", desc: "OWASP Top 10 suite" },
+                { icon: "🏛️", title: "RBAC & Audit", desc: "SHA-256 hash chain" },
+                { icon: "🌾", title: "Traffic Harvester", desc: "1-click Golden Sets" },
+              ].map((feat) => (
+                <div
+                  key={feat.title}
+                  className="bg-slate-900 border border-slate-800 rounded-xl p-3 hover:border-emerald-500/40 transition"
+                >
+                  <div className="text-base mb-1">{feat.icon}</div>
+                  <div className="text-xs font-semibold text-slate-200">{feat.title}</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">{feat.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Trust / Metrics Strip */}
+            <div className="flex flex-wrap items-center gap-6 pt-2 text-xs text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>100% Open-Source &amp; Free-Tier Ready</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>AES-256 BYOK Vault</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>Drop-in OpenAI SDK</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Auth Column */}
+          <div className="lg:col-span-5 w-full max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-7 space-y-5">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-slate-100">
+                {authMode === "login" ? "Welcome back" : "Create your workspace"}
+              </h2>
+              <p className="text-xs text-slate-400">
+                Sign in to access your multi-tenant evaluations, gateway &amp; guardrails.
+              </p>
+            </div>
 
           {/* Backend Health & Wake-Up Status Widget */}
           <div className="rounded-xl p-3 border transition-all duration-300 text-xs flex flex-col gap-2.5 bg-slate-950/70 border-slate-800">
@@ -851,16 +958,22 @@ export default function Dashboard() {
             <button
               type="submit"
               disabled={authLoading}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition disabled:opacity-50 mt-2 shadow-lg shadow-indigo-600/30"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-2.5 rounded-xl transition disabled:opacity-50 mt-2 shadow-lg shadow-emerald-950/30 text-white-force"
             >
               {authLoading && <Spinner />}
               {authLoading
                 ? "Authenticating..."
                 : authMode === "login"
-                ? "Sign In"
-                : "Create Account"}
+                ? "Sign In →"
+                : "Create Workspace →"}
             </button>
           </form>
+          </div>
+        </div>
+
+        {/* Bottom Subtle Footer */}
+        <div className="relative z-10 max-w-6xl w-full mx-auto text-center text-[11px] text-slate-500 py-2">
+          RAGBench Platform • Continuous Evaluation, AI Gateway, Guardrails &amp; Red-Teaming
         </div>
       </div>
     );
@@ -1093,13 +1206,18 @@ export default function Dashboard() {
 
       {/* Header */}
       <header className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between pb-4 border-b border-slate-800/80 gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent tracking-tight">
-            RAGBench Platform
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Production-Grade LLM, RAG &amp; Agent Evaluation Platform
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-emerald-950/30 text-white-force">
+            R
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent tracking-tight">
+              RAGBench Platform
+            </h1>
+            <p className="text-xs text-slate-400">
+              Production-Grade LLM, RAG &amp; Agent Evaluation Platform
+            </p>
+          </div>
         </div>
 
         {/* User Info & Actions */}
@@ -1150,6 +1268,16 @@ export default function Dashboard() {
             <span className="text-slate-600">|</span>
             <span className="text-indigo-400 font-medium">{currentUser.workspace_name}</span>
           </div>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg text-xs transition flex items-center gap-1"
+            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            <span>{theme === "dark" ? "☀️" : "🌙"}</span>
+            <span className="hidden sm:inline">{theme === "dark" ? "Light" : "Dark"}</span>
+          </button>
 
           <button
             onClick={handleLogout}

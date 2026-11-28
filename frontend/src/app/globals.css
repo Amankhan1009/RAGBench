@@ -1,26 +1,130 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09090b;
+  --foreground: #f4f4f5;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html[data-theme="light"] {
+  --background: #f4f4f5;
+  --foreground: #18181b;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html[data-theme="dark"] {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── GLOBAL THEME OVERRIDES: OBSIDIAN + EMERALD/TEAL (DARK) & SNOW + EMERALD (LIGHT) ── */
+/* Removes bluish slate/indigo tint across all components & enables full Dark/Light mode */
+
+/* Dark Mode: Neutral Obsidian/Zinc surfaces + Emerald/Teal accents */
+html[data-theme="dark"] .bg-slate-950 { background-color: #09090b !important; }
+html[data-theme="dark"] .bg-slate-950\/70,
+html[data-theme="dark"] .bg-slate-950\/60,
+html[data-theme="dark"] .bg-slate-950\/50 { background-color: rgba(9, 9, 11, 0.78) !important; }
+html[data-theme="dark"] .bg-slate-900 { background-color: #121216 !important; }
+html[data-theme="dark"] .bg-slate-900\/90,
+html[data-theme="dark"] .bg-slate-900\/80,
+html[data-theme="dark"] .bg-slate-900\/70,
+html[data-theme="dark"] .bg-slate-900\/60 { background-color: rgba(18, 18, 22, 0.85) !important; }
+html[data-theme="dark"] .bg-slate-800 { background-color: #202026 !important; }
+html[data-theme="dark"] .border-slate-800,
+html[data-theme="dark"] .border-slate-800\/80,
+html[data-theme="dark"] .border-slate-800\/60 { border-color: #27272a !important; }
+html[data-theme="dark"] .border-slate-700 { border-color: #3f3f46 !important; }
+html[data-theme="dark"] .divide-slate-800 > :not(:last-child),
+html[data-theme="dark"] .divide-slate-800\/80 > :not(:last-child),
+html[data-theme="dark"] .divide-slate-800\/60 > :not(:last-child) { border-color: #27272a !important; }
+
+/* Replace Blue/Indigo primary accents with Emerald/Teal in Dark Mode */
+html[data-theme="dark"] .bg-indigo-600 { background-color: #059669 !important; }
+html[data-theme="dark"] .hover\:bg-indigo-500:hover { background-color: #10b981 !important; }
+html[data-theme="dark"] .bg-indigo-600\/20 { background-color: rgba(16, 185, 129, 0.16) !important; }
+html[data-theme="dark"] .bg-indigo-600\/30 { background-color: rgba(16, 185, 129, 0.24) !important; }
+html[data-theme="dark"] .bg-indigo-500\/20 { background-color: rgba(16, 185, 129, 0.16) !important; }
+html[data-theme="dark"] .border-indigo-500,
+html[data-theme="dark"] .border-indigo-500\/40,
+html[data-theme="dark"] .border-indigo-500\/30 { border-color: rgba(16, 185, 129, 0.45) !important; }
+html[data-theme="dark"] .text-indigo-400,
+html[data-theme="dark"] .text-indigo-300,
+html[data-theme="dark"] .text-blue-400 { color: #34d399 !important; }
+html[data-theme="dark"] .bg-blue-600 { background-color: #0d9488 !important; }
+html[data-theme="dark"] .hover\:bg-blue-500:hover { background-color: #14b8a6 !important; }
+html[data-theme="dark"] .focus\:border-indigo-500:focus,
+html[data-theme="dark"] .focus\:border-blue-500:focus { border-color: #10b981 !important; }
+
+/* Light Mode: Crisp Alabaster/White surfaces + Emerald/Teal accents */
+html[data-theme="light"] .bg-slate-950 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-slate-950\/70,
+html[data-theme="light"] .bg-slate-950\/60,
+html[data-theme="light"] .bg-slate-950\/50 { background-color: #f8fafc !important; }
+html[data-theme="light"] .bg-slate-900 { background-color: #ffffff !important; }
+html[data-theme="light"] .bg-slate-900\/90,
+html[data-theme="light"] .bg-slate-900\/80,
+html[data-theme="light"] .bg-slate-900\/70,
+html[data-theme="light"] .bg-slate-900\/60 { background-color: rgba(255, 255, 255, 0.94) !important; }
+html[data-theme="light"] .bg-slate-800 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-slate-800\/60 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .hover\:bg-slate-800:hover,
+html[data-theme="light"] .hover\:bg-slate-800\/60:hover,
+html[data-theme="light"] .hover\:bg-slate-700:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-slate-800,
+html[data-theme="light"] .border-slate-800\/80,
+html[data-theme="light"] .border-slate-800\/60,
+html[data-theme="light"] .border-slate-700 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .divide-slate-800 > :not(:last-child),
+html[data-theme="light"] .divide-slate-800\/80 > :not(:last-child),
+html[data-theme="light"] .divide-slate-800\/60 > :not(:last-child) { border-color: #e4e4e7 !important; }
+
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-slate-200 { color: #18181b !important; }
+html[data-theme="light"] .text-slate-300 { color: #3f3f46 !important; }
+html[data-theme="light"] .text-slate-400 { color: #52525b !important; }
+html[data-theme="light"] .text-slate-500 { color: #71717a !important; }
+
+/* Keep white text inside solid colored CTA buttons in Light Mode */
+html[data-theme="light"] button.bg-indigo-600,
+html[data-theme="light"] button.bg-blue-600,
+html[data-theme="light"] button.bg-emerald-600,
+html[data-theme="light"] button[class*="from-emerald-600"],
+html[data-theme="light"] button[class*="from-teal-600"],
+html[data-theme="light"] button[class*="from-amber-600"],
+html[data-theme="light"] button[class*="from-purple-600"],
+html[data-theme="light"] button[class*="from-rose-600"],
+html[data-theme="light"] .text-white-force {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .bg-indigo-600 { background-color: #059669 !important; }
+html[data-theme="light"] .hover\:bg-indigo-500:hover { background-color: #10b981 !important; }
+html[data-theme="light"] .bg-indigo-600\/20,
+html[data-theme="light"] .bg-indigo-500\/20 { background-color: rgba(16, 185, 129, 0.12) !important; }
+html[data-theme="light"] .border-indigo-500,
+html[data-theme="light"] .border-indigo-500\/40,
+html[data-theme="light"] .border-indigo-500\/30 { border-color: rgba(5, 150, 105, 0.35) !important; }
+html[data-theme="light"] .text-indigo-400,
+html[data-theme="light"] .text-indigo-300,
+html[data-theme="light"] .text-blue-400 { color: #059669 !important; }
+html[data-theme="light"] .bg-blue-600 { background-color: #0d9488 !important; }
+html[data-theme="light"] .hover\:bg-blue-500:hover { background-color: #14b8a6 !important; }
+html[data-theme="light"] .focus\:border-indigo-500:focus,
+html[data-theme="light"] .focus\:border-blue-500:focus { border-color: #059669 !important; }
+
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: #d4d4d8 !important;
 }
