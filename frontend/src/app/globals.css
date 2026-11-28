@@ -128,3 +128,48 @@ html[data-theme="light"] textarea {
   color: #18181b !important;
   border-color: #d4d4d8 !important;
 }
+
+/* Light Mode: Override dark hero gradient banners (from-slate-900 via-*-950 to-slate-900) */
+html[data-theme="light"] [class*="bg-gradient-to-"][class*="from-slate-900"],
+html[data-theme="light"] [class*="bg-gradient-to-"][class*="from-slate-950"] {
+  background-image: linear-gradient(135deg, #ffffff 0%, #f0fdf4 55%, #f4f4f5 100%) !important;
+  border-color: #d4d4d8 !important;
+}
+
+/* Light Mode: Override dark 950/900/800 semi-transparent card & badge tints */
+html[data-theme="light"] [class*="bg-slate-950\/"],
+html[data-theme="light"] [class*="bg-slate-900\/"] {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+html[data-theme="light"] [class*="bg-emerald-950"] { background-color: #ecfdf5 !important; border-color: #a7f3d0 !important; }
+html[data-theme="light"] [class*="bg-teal-950"] { background-color: #f0fdfa !important; border-color: #99f6e4 !important; }
+html[data-theme="light"] [class*="bg-cyan-950"] { background-color: #ecfeff !important; border-color: #a5f3fc !important; }
+html[data-theme="light"] [class*="bg-amber-950"] { background-color: #fffbeb !important; border-color: #fde68a !important; }
+html[data-theme="light"] [class*="bg-rose-950"] { background-color: #fff1f2 !important; border-color: #fecdd3 !important; }
+html[data-theme="light"] [class*="bg-indigo-950"] { background-color: #ecfdf5 !important; border-color: #a7f3d0 !important; }
+html[data-theme="light"] [class*="bg-purple-950"],
+html[data-theme="light"] [class*="bg-violet-950"] { background-color: #f5f3ff !important; border-color: #ddd6fe !important; }
+
+/* Light Mode: Ensure colored -200/-300/-400 text is dark & crisp on light backgrounds */
+html[data-theme="light"] .text-emerald-200,
+html[data-theme="light"] .text-emerald-300,
+html[data-theme="light"] .text-emerald-400 { color: #047857 !important; }
+html[data-theme="light"] .text-teal-200,
+html[data-theme="light"] .text-teal-300,
+html[data-theme="light"] .text-teal-400 { color: #0f766e !important; }
+html[data-theme="light"] .text-cyan-200,
+html[data-theme="light"] .text-cyan-300,
+html[data-theme="light"] .text-cyan-400 { color: #0e7490 !important; }
+html[data-theme="light"] .text-amber-200,
+html[data-theme="light"] .text-amber-300,
+html[data-theme="light"] .text-amber-400 { color: #b45309 !important; }
+html[data-theme="light"] .text-rose-200,
+html[data-theme="light"] .text-rose-300,
+html[data-theme="light"] .text-rose-400 { color: #be123c !important; }
+html[data-theme="light"] .text-purple-200,
+html[data-theme="light"] .text-purple-300,
+html[data-theme="light"] .text-purple-400,
+html[data-theme="light"] .text-violet-200,
+html[data-theme="light"] .text-violet-300,
+html[data-theme="light"] .text-violet-400 { color: #6d28d9 !important; }
+
