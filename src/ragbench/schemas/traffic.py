@@ -1,7 +1,7 @@
 """Pydantic schemas for Production Traffic Shadowing and Golden Set Harvester."""
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import uuid
 
 from pydantic import BaseModel, Field, field_validator
 
